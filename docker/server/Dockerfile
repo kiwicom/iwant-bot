@@ -11,7 +11,7 @@ RUN true \
 	&& git clone https://github.com/kiwicom/iwant-bot.git /iwant-bot-cloned \
 	&& ln -s /iwant-bot-cloned /iwant-bot \
 	&& (cd iwant-bot && git checkout docker-support) \
-	&& pip install -r iwant-bot/requirements.txt \
+	&& (cd iwant-bot && python setup.py develop) \
 	&& true
 
-CMD [ "python", "/iwant-bot/src/iwant_bot/start.py"]
+CMD [ "python", "python -m iwant_bot.start"]

@@ -1,6 +1,6 @@
 from aiohttp import web
 
-import db
+from iwant_bot import db
 
 
 DB_ACCESS = None

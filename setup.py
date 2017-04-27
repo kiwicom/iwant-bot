@@ -13,7 +13,7 @@ import pathlib
 SETUP_PY_DIRECTORY = pathlib.Path(__file__).resolve().parent
 
 # Get the long description from the README file
-with open(SETUP_PY_DIRECTORY / 'README.rst', encoding='utf-8') as f:
+with open(SETUP_PY_DIRECTORY / 'README.md', encoding='utf-8') as f:
     long_description = f.read()
 
 
@@ -65,9 +65,10 @@ setup(
     # What does your project relate to?
     keywords='slack chatbot',
 
+    package_dir={"": "src"},
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
-    packages=find_packages(exclude=['docs', 'tests']),
+    packages=find_packages("src", exclude=['docs', 'tests']),
 
     # Alternatively, if you want to distribute just a my_module.py, uncomment
     # this:
