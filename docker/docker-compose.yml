@@ -3,6 +3,8 @@ services:
   server:
     build: ./server
     image: "iwantbot/server"
+    volumes:
+     - ..:/iwant-bot-mount
     ports:
      - "8080:8080"
   database:
