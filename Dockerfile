@@ -9,4 +9,4 @@ RUN true \
 
 WORKDIR /app/src
 
-CMD ["gunicorn", "iwant_bot.start:app", "--reload", "--bind", "0.0.0.0:8080", "--worker-class", "aiohttp.GunicornWebWorker"]
+CMD ["gunicorn", "iwant_bot.start:app", "--reload", "--bind", "0.0.0.0:80", "--worker-class", "aiohttp.GunicornWebWorker"]
