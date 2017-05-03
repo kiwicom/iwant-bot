@@ -2,10 +2,8 @@ FROM python:3.6-alpine
 
 COPY requirements.txt /app/
 
-RUN true \
-	&& pip install gunicorn \
-	&& pip install -r /app/requirements.txt \
-	&& true
+RUN pip install gunicorn \
+	&& pip install -r /app/requirements.txt
 
 WORKDIR /app/src
 
