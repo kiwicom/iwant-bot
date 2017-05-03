@@ -2,7 +2,7 @@ version: '3'
 services:
   server:
     build: .
-    image: "iwantbot/server"
+    image: "kiwicom/iwantbot"
     volumes:
      - .:/app
     ports:
