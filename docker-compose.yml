@@ -1,0 +1,9 @@
+version: '3'
+services:
+  server:
+    build: .
+    image: "kiwicom/iwantbot"
+    volumes:
+     - .:/app
+    ports:
+     - "8080:80"
