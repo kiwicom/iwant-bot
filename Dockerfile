@@ -1,6 +1,6 @@
 FROM python:3.6-alpine
 
-COPY requirements.txt /app/
+COPY . /app/
 
 RUN pip install gunicorn \
 	&& pip install -r /app/requirements.txt
