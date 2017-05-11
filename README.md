@@ -15,15 +15,15 @@ Slackbot project implemented by [Kiwi.com](Kiwi.com) interns
 
 Slack has [Incoming](https://api.slack.com/incoming-webhooks) and 
 [Outgoing WebHooks](https://api.slack.com/custom-integrations/outgoing-webhooks) in custom integrations, 
-which can be turn on for selected channels. Check the slack _bot-channel_.
+which can be turn on for selected channels. It is set up for kiwislackbot.slack.com on _#bot-channel_.
 
 * Incoming WebHook adds message to the channel from the POST request with JSON payload:
 `curl -X POST -H 'Content-type: application/json' --data '{"text":"Hello, World!"}' https://hooks.slack.com/services/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`
-(_bot-channel_)
-* Outgoing WebHook sends POSTs to each given url. Messages from _bot-channel_ are sended to  
+(_#bot-channel_)
+* Outgoing WebHook sends POSTs to each given URLs. Messages from _bot-channel_ are sended to  
 https://kiwislackbot{1..4}.localtunnel.me
-* Catching the POST from slack: Run `docker-compose up`. Run [localtunnel](https://localtunnel.github.io/www/) 
-`lt -p 8080 -s 'kiwislackbot{1..4}'`. iwant-bot listens to the slack's POSTs, you can check it by command
+* To route slack requests to a local _iwant-bot_ app, run [localtunnel](https://localtunnel.github.io/www/) 
+`lt -p 8080 -s 'kiwislackbot{1..4}'`. _iwant-bot_ listens to the slack's POSTs, you can check it by command
 `curl -X POST https://kiwislackbot{1..4}.localtunnel.me/`
 
 ## Corner cases
