@@ -90,3 +90,6 @@ ENV/
 
 # File backups
 *~
+
+# sqlalchemy database
+src/lala.sqlite
