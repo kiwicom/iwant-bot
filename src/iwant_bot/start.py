@@ -6,6 +6,10 @@ from iwant_bot import db
 DB_ACCESS = None
 
 
+def add_numbers(a, b):
+    return a + b
+
+
 def format_message(message):
    ret = f"'{message.text}' by '{message.nickname}' at {message.when}"
    return ret
