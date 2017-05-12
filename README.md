@@ -20,7 +20,7 @@ which can be turn on for selected channels. It is set up for kiwislackbot.slack.
 * Incoming WebHook adds message to the channel from the POST request with JSON payload:
 `curl -X POST -H 'Content-type: application/json' --data '{"text":"Hello, World!"}' https://hooks.slack.com/services/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`
 (_#bot-channel_)
-* Outgoing WebHook sends POSTs to each given URLs. Messages from _bot-channel_ are sended to  
+* Outgoing WebHook sends POSTs to each given URLs. Messages from _bot-channel_ are sent to 
 https://kiwislackbot{1..4}.localtunnel.me
 * To route slack requests to a local _iwant-bot_ app, run [localtunnel](https://localtunnel.github.io/www/) 
 `lt -p 8080 -s 'kiwislackbot{1..4}'`. _iwant-bot_ listens to the slack's POSTs, you can check it by command
