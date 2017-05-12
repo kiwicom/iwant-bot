@@ -37,7 +37,6 @@ Please,
 - Keep the first line short, limit to 50 characters or less
 - Limit the every other line to 72 characters or less
 - Reference issues and pull requests liberally
-- When only changing documentation, include __[ci skip]__ in the commit description
 - Consider starting the commit message with an applicable emoji:
     * :art: `:art:` when improving the format/structure of the code
     * :racehorse: `:racehorse:` when improving performance
