@@ -90,3 +90,7 @@ ENV/
 
 # File backups
 *~
+
+# sqlalchemy databases
+*.sqlite
+*.sqlite3
