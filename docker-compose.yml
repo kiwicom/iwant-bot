@@ -1,7 +1,10 @@
 version: '3'
 services:
   server:
-    build: .
+    build:
+      context: .
+      args:
+       - "timezone=Europe/Prague"
     image: "kiwicom/iwantbot"
     volumes:
      - .:/app

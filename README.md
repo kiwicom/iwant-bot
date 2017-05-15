@@ -31,4 +31,5 @@ https://kiwislackbot{1..4}.localtunnel.me
 * If a problem occurs when generating the image because it was not possible to get some dependencies, it means that the `requirements.txt` file needs to be regenerated from `requirements.in`.
   You will need `pip-compile` tool (which is part of the `pip-tools` PyPi package) to do this.
   See `requirements.txt` for details on how to do it.
+* If the container timezone doesn't match, [override](https://docs.docker.com/compose/extends/#multiple-compose-files) the value of the `timezone` build argument.
 * Localtunnel subdomain `kiwislackbot1` can be occupied, try different number 2, 3, or 4.
