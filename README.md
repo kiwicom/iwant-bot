@@ -13,18 +13,22 @@ Slackbot project implemented by [Kiwi.com](Kiwi.com) interns
 
 ### Local development set up
 
-Slack has [Incoming](https://api.slack.com/incoming-webhooks) and 
-[Outgoing WebHooks](https://api.slack.com/custom-integrations/outgoing-webhooks) in custom integrations, 
-which can be turn on for selected channels. It is set up for kiwislackbot.slack.com on _#bot-channel_.
+Slack has [Incoming](https://api.slack.com/incoming-webhooks) and
+[Outgoing WebHooks](https://api.slack.com/custom-integrations/outgoing-webhooks) in custom integrations,
+which can be turn on for selected channels and/or activate by key_words at the beginning of each message.
+Slack kiwislackbot.slack.com is set up for key_words `repeat` or `whoami` in all channels.
 
 * Incoming WebHook adds message to the channel from the POST request with JSON payload:
 `curl -X POST -H 'Content-type: application/json' --data '{"text":"Hello, World!"}' https://hooks.slack.com/services/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`
 (_#bot-channel_)
-* Outgoing WebHook sends POSTs to each given URLs. Messages from _bot-channel_ are sent to 
-https://kiwislackbot{1..4}.localtunnel.me
-* To route slack requests to a local _iwant-bot_ app, run [localtunnel](https://localtunnel.github.io/www/) 
-`lt -p 8080 -s 'kiwislackbot{1..4}'`. _iwant-bot_ listens to the slack's POSTs, you can check it by command
-`curl -X POST https://kiwislackbot{1..4}.localtunnel.me/`
+
+* Outgoing WebHook sends messages with leading key_words `repeat` or `whoami` to
+ each given URLs (https://kiwislackbot{1..4}.localtunnel.me).
+
+* _iwant-bot_ app listens to port 8080, so run [localtunnel](https://localtunnel.github.io/www/)
+`lt -p 8080 -s 'kiwislackbot{1..4}'` to connect Slack with _iwant-bot_ app at localhost.
+You can check _iwant-bot_ locally
+`curl -X POST --data "user_name=0&channel_id=1&channel_name=2&service_id=3&team_domain=4&team_id=5&text=6&timestamp=7&token=9&user_id=9" http://localhost:8080`.
 
 ## Corner cases
 
@@ -33,3 +37,6 @@ https://kiwislackbot{1..4}.localtunnel.me
   See `requirements.txt` for details on how to do it.
 * If the container timezone doesn't match, [override](https://docs.docker.com/compose/extends/#multiple-compose-files) the value of the `timezone` build argument.
 * Localtunnel subdomain `kiwislackbot1` can be occupied, try different number 2, 3, or 4.
+* Localtunnel can have problem with out network (502 bad gateway)
+* Localtunnel and `curl -X POST --data "..."` can have problem too,
+`curl: (92) HTTP/2 stream 1 was not closed cleanly: REFUSED_STREAM (err 7)`

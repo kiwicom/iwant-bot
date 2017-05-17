@@ -15,6 +15,8 @@ RUN apk add --update tzdata \
 
 WORKDIR /app/src
 
-CMD ["gunicorn", "iwant_bot.start:app", "--reload", "--bind", "0.0.0.0:80", "--worker-class", "aiohttp.GunicornWebWorker"]
+ENV PYTHONUNBUFFERED 1
+
+CMD ["gunicorn", "iwant_bot.start:app", "--reload", "--bind", "0.0.0.0:80", "--access-logfile", "-", "--worker-class", "aiohttp.GunicornWebWorker"]
 
 COPY . /app/
