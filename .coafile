@@ -1,0 +1,3 @@
+[Default]
+bears = PEP8Bear,PyFlakesBear,PySafetyBear,PyromaBear,RadonBear
+files = **.py
