@@ -11,8 +11,8 @@ def add_numbers(a, b):
 
 
 def format_message(message):
-   ret = f"'{message.text}' by '{message.nickname}' at {message.when}"
-   return ret
+    ret = f"'{message.text}' by '{message.nickname}' at {message.when}"
+    return ret
 
 
 async def handle(request):
