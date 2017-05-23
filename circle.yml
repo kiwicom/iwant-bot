@@ -1,3 +1,10 @@
 machine:
+  services:
+    - docker
   python:
     version: 3.6.0
+
+test:
+  override:
+    - docker run -v=$(pwd):/app --workdir=/app coala/base coala --ci    
+    - tox
