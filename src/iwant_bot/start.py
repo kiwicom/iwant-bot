@@ -27,13 +27,15 @@ async def handle(request):
     text += ['Or you can test POST request by command:']
     text += ['> curl -X POST  --data "user_name=0&channel_id=1&channel_name=2&service_id=3&']
     text += ['  team_domain=4&team_id=5&text=6&timestamp=7&token=9&user_id=9" http://localhost:8080']
-             #curl -X POST some_url_like_https://kiwislackbot1.localtunnel.me/\n']
+    # curl -X POST some_url_like_https://kiwislackbot1.localtunnel.me/\n']
     text.extend([format_message(msg) for msg in messages_we_got_so_far])
     return web.Response(text='\n'.join(text))
+
 
 def format_response(message="No response."):
     ret = f'{{\n\t"text":"{message}"\n}}\n'
     return ret
+
 
 def check_post_request(body):
     '''The structure of POST is given by Slack.
@@ -45,7 +47,8 @@ def check_post_request(body):
     obtined_fields = set(body.keys())
 
     if (expected_fields - obtined_fields):
-        print('POST missing these fields: ' + ', '.join(expected_fields - obtined_fields))
+        print('POST missing these fields: '
+              ', '.join(expected_fields - obtined_fields))
         return False
 
     return True
