@@ -1,7 +1,7 @@
 from aiohttp import web
 
 from iwant_bot import db
-
+#import slacker
 
 DB_ACCESS = None
 
@@ -50,10 +50,11 @@ def check_post_request(body):
 
     return True
 
+import sys
 
 async def handle_post(request):
     body = await request.post()
-    print(request.method)
+    print(body)
     # test of POST body structure
     if check_post_request(body):
         token =         body["token"]
@@ -77,7 +78,8 @@ async def handle_post(request):
     if trigger_word == 'repeat':
         res = web.json_response(body=format_response(user_name + ' wants me to ' + text))
         print(res.headers)
-        print(res.body)  # how to display full response body? It is <aiohttp.payload.StringPayload object at 0x7fc9e266c2e8>
+        #res.charset='utf-8'
+        #print(res.body.write('sys.stderr'))
         return res
         #return web.json_response(body=format_response(user_name + ' wants me to ' + text))
     elif trigger_word == 'whoami':
