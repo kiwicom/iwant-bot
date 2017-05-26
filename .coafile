@@ -1,3 +1,4 @@
 [python]
 bears = PEP8Bear,PyFlakesBear,PySafetyBear,PyromaBear,RadonBear
+max_line_length = 99
 files = **.py
