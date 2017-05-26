@@ -1,19 +1,16 @@
 from aiohttp import web
-
+import asyncio
+import requests
 from iwant_bot import db
 
-
 DB_ACCESS = None
-
 
 def add_numbers(a, b):
     return a + b
 
-
 def format_message(message):
-   ret = f"'{message.text}' by '{message.nickname}' at {message.when}"
-   return ret
-
+    ret = f"'{message.text}' by '{message.nickname}' at {message.when}"
+    return ret
 
 async def handle(request):
     name = request.rel_url.query.get('name', 'anonymous')
@@ -38,7 +35,7 @@ def format_response(message="No response."):
 def check_post_request(body):
     '''The structure of POST is given by Slack.
     https://api.slack.com/custom-integrations/outgoing-webhooks
-    However, "trigger_word" is opional.'''
+    However, "trigger_word" is optional.'''
 
     expected_fields = {"token", "team_id", "team_domain", "service_id", "channel_id",
                        "channel_name", "timestamp", "user_id", "user_name", "text"}
@@ -50,6 +47,14 @@ def check_post_request(body):
 
     return True
 
+
+async def waiter(future, user_name):
+    await asyncio.sleep(120)
+    future.set_result({'text': 'This is reaction on coffee request from ' + user_name + '.', 'channel_name': 'bot-channel'})
+
+def resulter(future):
+    print("This will show up after 2 minutes")
+    res = requests.post(url='https://hooks.slack.com/services/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', json=future.result())
 
 async def handle_post(request):
     body = await request.post()
@@ -82,14 +87,27 @@ async def handle_post(request):
         #return web.json_response(body=format_response(user_name + ' wants me to ' + text))
     elif trigger_word == 'whoami':
         return web.json_response(body=format_response('You are ' + user_name + ' with id ' + user_id))
+
+    elif trigger_word == 'coffee':
+        res = web.json_response(body=format_response(user_name + ' wants coffee on ' + timestamp))
+        print("Response will be send in 2 minutes")
+        future = asyncio.Future()
+        asyncio.ensure_future(waiter(future, user_name))
+        future.add_done_callback(resulter)
+        return res
+
     else:
         return web.json_response(body=format_response(user_name + ' wrote ' + text))
 
 
-app = web.Application()
+loopX = asyncio.get_event_loop()
+loopX.set_debug(0)
+
+app = web.Application(loop=loopX)
 app.router.add_get('/', handle)
 app.router.add_post('/', handle_post)
 DB_ACCESS = db.DatabaseAccess()
 
 if __name__ == '__main__':
     web.run_app(app)
+
