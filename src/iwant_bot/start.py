@@ -59,16 +59,16 @@ async def handle_post(request):
     print(request.method)
     # test of POST body structure
     if check_post_request(body):
-        token =         body["token"]
-        team_id =       body["team_id"]
-        team_domain =   body["team_domain"]
-        service_id =    body["service_id"]
-        channel_id =    body["channel_id"]
-        channel_name =  body["channel_name"]
-        timestamp =     body["timestamp"]
-        user_id =       body["user_id"]
-        user_name =     body["user_name"]
-        text =          body["text"]
+        # token =         body["token"]
+        # team_id =       body["team_id"]
+        # team_domain =   body["team_domain"]
+        # service_id =    body["service_id"]
+        # channel_id =    body["channel_id"]
+        # channel_name =  body["channel_name"]
+        # timestamp =     body["timestamp"]
+        user_id = body["user_id"]
+        user_name = body["user_name"]
+        text = body["text"]
         try:
             trigger_word = body["trigger_word"]
         except KeyError:
@@ -79,10 +79,7 @@ async def handle_post(request):
 
     if trigger_word == 'repeat':
         res = web.json_response(body=format_response(user_name + ' wants me to ' + text))
-        print(res.headers)
-        print(res.body)  # how to display full response body? It is <aiohttp.payload.StringPayload object at 0x7fc9e266c2e8>
         return res
-        #return web.json_response(body=format_response(user_name + ' wants me to ' + text))
     elif trigger_word == 'whoami':
         return web.json_response(body=format_response('You are ' + user_name + ' with id ' + user_id))
     else:
