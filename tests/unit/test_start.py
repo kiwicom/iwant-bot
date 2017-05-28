@@ -1,6 +1,3 @@
-import pytest
-
-
 from iwant_bot import start
 
 
