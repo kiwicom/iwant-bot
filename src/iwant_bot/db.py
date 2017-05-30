@@ -51,7 +51,8 @@ class DatabaseAccess(object):
     def save_message(self, message, nickname):
         session = self._make_session()
         try:
-            query = session.query(sqlalchemy.exists().where(Nickname.name == nickname))
+            query = session.query(
+                sqlalchemy.exists().where(Nickname.name == nickname))
             nickname_is_known = query.scalar()
             if not nickname_is_known:
                 self.add_new_nickname_to_session(session, nickname)

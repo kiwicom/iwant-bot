@@ -25,9 +25,8 @@ async def handle(request):
     text += ['so you can do http://localhost:8080/?name=me&msg=message']
     text += ['We got these entries so far:\n']
     text += ['Or you can test POST request by command:']
-    text += ['> curl -X POST  --data "user_name=0&channel_id=1&channel_name=2&service_id=3&']
-    text += ['  team_domain=4&team_id=5&text=6&timestamp=7&token=9&user_id=9" http://localhost:8080']
-    # curl -X POST some_url_like_https://kiwislackbot1.localtunnel.me/\n']
+    text += ['> curl -X POST  --data "user_name=0&channel_name=2']
+    text += ['  team_domain=4&team_id=5&text=6 http://localhost:8080']
     text.extend([format_message(msg) for msg in messages_we_got_so_far])
     return web.Response(text='\n'.join(text))
 
@@ -42,8 +41,9 @@ def check_post_request(body):
     https://api.slack.com/custom-integrations/outgoing-webhooks
     However, "trigger_word" is opional.'''
 
-    expected_fields = {"token", "team_id", "team_domain", "service_id", "channel_id",
-                       "channel_name", "timestamp", "user_id", "user_name", "text"}
+    expected_fields = {"token", "team_id", "team_domain", "service_id",
+                       "channel_id", "channel_name", "timestamp",
+                       "user_id", "user_name", "text"}
     obtined_fields = set(body.keys())
 
     if (expected_fields - obtined_fields):
@@ -57,15 +57,7 @@ def check_post_request(body):
 async def handle_post(request):
     body = await request.post()
     print(request.method)
-    # test of POST body structure
     if check_post_request(body):
-        # token =         body["token"]
-        # team_id =       body["team_id"]
-        # team_domain =   body["team_domain"]
-        # service_id =    body["service_id"]
-        # channel_id =    body["channel_id"]
-        # channel_name =  body["channel_name"]
-        # timestamp =     body["timestamp"]
         user_id = body["user_id"]
         user_name = body["user_name"]
         text = body["text"]
@@ -78,13 +70,14 @@ async def handle_post(request):
         return web.Response(text='No valid Slack POST request.\n')
 
     if trigger_word == 'repeat':
-        res = web.json_response(body=format_response(user_name + ' wants me to ' + text))
-        return res
+        message = format_response(user_name + ' wants me to ' + text)
     elif trigger_word == 'whoami':
-        return web.json_response(body=format_response('You are ' + user_name + ' with id ' + user_id))
+        message = format_response(
+            'You are ' + user_name + ' with id ' + user_id)
     else:
-        return web.json_response(body=format_response(user_name + ' wrote ' + text))
+        message = format_response(user_name + ' wrote ' + text)
 
+    return web.json_response(body=message)
 
 app = web.Application()
 app.router.add_get('/', handle)

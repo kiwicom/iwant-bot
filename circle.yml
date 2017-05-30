@@ -6,5 +6,5 @@ machine:
 
 test:
   override:
-    - docker run -v=$(pwd):/app --workdir=/app coala/base coala --ci    
+    - docker run -v=$(pwd):/app --workdir=/app coala/base:0.11 coala --ci
     - tox
