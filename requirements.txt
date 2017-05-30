@@ -4,9 +4,21 @@
 #
 #    pip-compile --output-file requirements.txt requirements.in
 #
-aiohttp==2.0.7
-async-timeout==1.2.0      # via aiohttp
-chardet==3.0.2            # via aiohttp
-multidict==2.1.4          # via aiohttp, yarl
-sqlalchemy==1.1.9
-yarl==0.10.0              # via aiohttp
+#aiohttp
+#sqlalchemy
+#slacker-asyncio
+#
+# => produced ... why aiohttp==0.21.6 ????
+#
+#aiohttp==0.21.6
+#chardet==3.0.2            # via aiohttp
+#slacker-asyncio==0.8.7
+#sqlalchemy==1.1.9
+
+aiohttp==2.1.0
+async-timeout==1.2.1
+chardet==3.0.3
+multidict==2.1.6
+slacker-asyncio==0.8.7
+SQLAlchemy==1.1.9
+yarl==0.10.2

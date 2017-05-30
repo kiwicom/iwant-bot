@@ -50,7 +50,7 @@ def check_post_request(body):
 
     return True
 
-import sys
+
 
 async def handle_post(request):
     body = await request.post()
@@ -93,5 +93,18 @@ app.router.add_get('/', handle)
 app.router.add_post('/', handle_post)
 DB_ACCESS = db.DatabaseAccess()
 
+########testing part...#######################
+import asyncio
+from slacker import Slacker
+
+async def run():
+    slack = Slacker('')   
+    slack.chat.post_message('#bot-channel', 'docker slacker-asyncio test!')
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(run())
+#############################
+
 if __name__ == '__main__':
     web.run_app(app)
+
