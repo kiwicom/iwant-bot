@@ -25,71 +25,70 @@ async def handle(request):
     text += ['so you can do http://localhost:8080/?name=me&msg=message']
     text += ['We got these entries so far:\n']
     text += ['Or you can test POST request by command:']
-    text += ['> curl -X POST  --data "user_name=0&channel_id=1&channel_name=2&service_id=3&']
-    text += ['  team_domain=4&team_id=5&text=6&timestamp=7&token=9&user_id=9" http://localhost:8080']
-    # curl -X POST some_url_like_https://kiwislackbot1.localtunnel.me/\n']
+    text += ['> curl -X POST  --data "user_name=Pepa&token=666" http://localhost:8080']
     text.extend([format_message(msg) for msg in messages_we_got_so_far])
     return web.Response(text='\n'.join(text))
 
 
 def format_response(message="No response."):
-    ret = f'{{\n\t"text":"{message}"\n}}\n'
-    return ret
+    body = f'{{\n\t"text":"{message}"\n}}\n'
+    return body
 
 
-def check_post_request(body):
-    '''The structure of POST is given by Slack.
-    https://api.slack.com/custom-integrations/outgoing-webhooks
-    However, "trigger_word" is opional.'''
-
-    expected_fields = {"token", "team_id", "team_domain", "service_id", "channel_id",
-                       "channel_name", "timestamp", "user_id", "user_name", "text"}
-    obtined_fields = set(body.keys())
-
-    if (expected_fields - obtined_fields):
-        print('POST missing these fields: '
-              ', '.join(expected_fields - obtined_fields))
+def verify_post_request(token):
+    """Compare the token with the slack bot private token."""
+    # compare tokens with '...?' Error or true/false.
+    if token:
+        return True
+    else:
         return False
 
-    return True
+
+def body_to_dict(body):
+    """Try to convert MultiDictProxy to dictionary.
+    Not handled ValueError"""
+    keys = set(body.keys())
+    if len(keys) == len(body):
+        body_dict = {}
+        for key in keys:
+            body_dict[key] = body[key]
+    else:
+        raise ValueError("MultiDict contains same keys.")
+    return body_dict
+
+
+def trigger_reaction(body, trigger):
+    """Commands: /iwant,
+    Trigger_words: None"""
+    return web.json_response(body=format_response(
+        f"{body['user_name']} used {trigger} {body[trigger]} with {body['text']}."))
 
 
 async def handle_post(request):
-    body = await request.post()
-    print(request.method)
-    # test of POST body structure
-    if check_post_request(body):
-        # token =         body["token"]
-        # team_id =       body["team_id"]
-        # team_domain =   body["team_domain"]
-        # service_id =    body["service_id"]
-        # channel_id =    body["channel_id"]
-        # channel_name =  body["channel_name"]
-        # timestamp =     body["timestamp"]
-        user_id = body["user_id"]
-        user_name = body["user_name"]
-        text = body["text"]
-        try:
-            trigger_word = body["trigger_word"]
-        except KeyError:
-            print("No trigger_word was used.")
-            trigger_word = None
-    else:
-        return web.Response(text='No valid Slack POST request.\n')
+    body = body_to_dict(await request.post())
+    print(body)
 
-    if trigger_word == 'repeat':
-        res = web.json_response(body=format_response(user_name + ' wants me to ' + text))
-        return res
-    elif trigger_word == 'whoami':
-        return web.json_response(body=format_response('You are ' + user_name + ' with id ' + user_id))
+    if verify_post_request(body['token']):  # error if not 'token'
+        """Separation of cases like /iwant commands, responses, etc."""
+
+        triggers = ['command', 'trigger_word']  # stops with the first match
+        for key in triggers:
+            if key in body:
+                return trigger_reaction(body, key)
+            else:
+                print(key + " not found.")
+        else:
+            return web.json_response(body=format_response("I don't get it, try commands like /iwant."))
+
     else:
-        return web.json_response(body=format_response(user_name + ' wrote ' + text))
+        return web.json_response(body=format_response("iwant-bot does not listen to you!"))
 
 
 app = web.Application()
 app.router.add_get('/', handle)
 app.router.add_post('/', handle_post)
 DB_ACCESS = db.DatabaseAccess()
+
 
 if __name__ == '__main__':
     web.run_app(app)
