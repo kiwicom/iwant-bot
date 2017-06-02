@@ -59,8 +59,9 @@ def body_to_dict(body):
 def trigger_reaction(body, trigger):
     """Commands: /iwant,
     Trigger_words: None"""
-    return web.json_response(body=format_response(
-        f"{body['user_name']} used {trigger} {body[trigger]} with {body['text']}."))
+    message = format_response(
+        f"{body['user_name']} used {body[trigger]} with {body['text']}.")
+    return web.json_response(body=message)
 
 
 async def handle_post(request):
@@ -77,11 +78,11 @@ async def handle_post(request):
             else:
                 print(key + " not found.")
         else:
-            return web.json_response(body=format_response("I don't get it, try commands like /iwant."))
-
+            message = format_response("I don't get it, try command /iwant.")
     else:
-        return web.json_response(body=format_response("iwant-bot does not listen to you!"))
+        message = format_response("iwant-bot does not listen to you!")
 
+    return web.json_response(body=message)
 
 app = web.Application()
 app.router.add_get('/', handle)
