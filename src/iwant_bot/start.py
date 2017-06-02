@@ -34,54 +34,60 @@ def format_response(message='No response.'):
     return json.dumps({'text': message})
 
 
-def check_post_request(body):
-    """The structure of POST is given by Slack.
-    https://api.slack.com/custom-integrations/outgoing-webhooks
-    However, "trigger_word" is opional."""
-
-    expected_fields = {'token', 'team_id', 'team_domain', 'service_id',
-                       'channel_id', 'channel_name', 'timestamp',
-                       'user_id', 'user_name', 'text'}
-    obtined_fields = set(body.keys())
-
-    if expected_fields - obtined_fields:
-        print('POST missing these fields: '
-              ', '.join(expected_fields - obtined_fields)
-              )
+def verify_post_request(token):
+    """Compare the token with the slack bot private token."""
+    # compare tokens with '...?' Error or true/false.
+    if token:
+        return True
+    else:
         return False
 
-    return True
+
+def body_to_dict(body):
+    """Try to convert MultiDictProxy to dictionary.
+    Not handled ValueError"""
+    keys = set(body.keys())
+    if len(keys) == len(body):
+        body_dict = {}
+        for key in keys:
+            body_dict[key] = body[key]
+    else:
+        raise ValueError("MultiDict contains same keys.")
+    return body_dict
+
+
+def trigger_reaction(body, trigger):
+    """Commands: /iwant,
+    Trigger_words: None"""
+    return web.json_response(body=format_response(
+        f"{body['user_name']} used {trigger} {body[trigger]} with {body['text']}."))
 
 
 async def handle_post(request):
-    body = await request.post()
-    print(request.method)
-    if check_post_request(body):
-        user_id = body['user_id']
-        user_name = body['user_name']
-        text = body['text']
-        try:
-            trigger_word = body['trigger_word']
-        except KeyError:
-            print('No trigger_word was used.')
-            trigger_word = None
-    else:
-        return web.Response(text='No valid Slack POST request.\n')
+    body = body_to_dict(await request.post())
+    print(body)
 
-    if trigger_word == 'repeat':
-        message = format_response(f'{user_name} wants me to {text}')
-    elif trigger_word == 'whoami':
-        message = format_response(f'You are {user_name} with id {user_id}')
-    else:
-        message = format_response(f'{user_name} wrote {text}')
+    if verify_post_request(body['token']):  # error if not 'token'
+        """Separation of cases like /iwant commands, responses, etc."""
 
-    return web.json_response(body=message)
+        triggers = ['command', 'trigger_word']  # stops with the first match
+        for key in triggers:
+            if key in body:
+                return trigger_reaction(body, key)
+            else:
+                print(key + " not found.")
+        else:
+            return web.json_response(body=format_response("I don't get it, try commands like /iwant."))
+
+    else:
+        return web.json_response(body=format_response("iwant-bot does not listen to you!"))
 
 
 app = web.Application()
 app.router.add_get('/', handle)
 app.router.add_post('/', handle_post)
 DB_ACCESS = db.DatabaseAccess()
+
 
 if __name__ == '__main__':
     web.run_app(app)
