@@ -25,7 +25,7 @@ async def handle(request):
     text += ['so you can do http://localhost:8080/?name=me&msg=message']
     text += ['We got these entries so far:\n']
     text += ['Or you can test POST request by command:']
-    text += ['> curl -X POST  --data "user_name=Pepa&token=666" http://localhost:8080']
+    text += ['> curl -X POST -d "user_name=Pepa&token=6" http://localhost:8080']
     text.extend([format_message(msg) for msg in messages_we_got_so_far])
     return web.Response(text='\n'.join(text))
 
@@ -60,8 +60,9 @@ def body_to_dict(body):
 def trigger_reaction(body, trigger):
     """Commands: /iwant,
     Trigger_words: None"""
-    return web.json_response(body=format_response(
-        f"{body['user_name']} used {trigger} {body[trigger]} with {body['text']}."))
+    message = format_response(
+        f"{body['user_name']} used {body[trigger]} with {body['text']}.")
+    return web.json_response(body=message)
 
 
 async def handle_post(request):
@@ -78,11 +79,11 @@ async def handle_post(request):
             else:
                 print(key + " not found.")
         else:
-            return web.json_response(body=format_response("I don't get it, try commands like /iwant."))
-
+            message = format_response("I don't get it, try command /iwant.")
     else:
-        return web.json_response(body=format_response("iwant-bot does not listen to you!"))
+        message = format_response("iwant-bot does not listen to you!")
 
+    return web.json_response(body=message)
 
 app = web.Application()
 app.router.add_get('/', handle)
