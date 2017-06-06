@@ -1,9 +1,24 @@
+import asyncio
 from aiohttp import web
-
 from iwant_bot import db
-
+from os import getenv
+from re import match
+from aioslacker import Slacker
 
 DB_ACCESS = None
+
+BOT_TOKEN = getenv('BOT_TOKEN')
+if BOT_TOKEN is None:
+    raise EnvironmentError('Unknown "Bot User OAuth Access Token".')
+if not match('xoxb', BOT_TOKEN):
+    raise EnvironmentError(
+        'Bad "Bot User OAuth Access Token", which does not begin with "xoxb".')
+
+VERIFICATION = getenv('VERIFICATION')
+if VERIFICATION is None:
+    raise EnvironmentError('Unknown "Verification Token".')
+
+_commands = ['/iwant']
 
 
 def add_numbers(a, b):
@@ -37,11 +52,7 @@ def format_response(message="No response."):
 
 def verify_post_request(token):
     """Compare the token with the slack bot private token."""
-    # compare tokens with '...?' Error or true/false.
-    if token:
-        return True
-    else:
-        return False
+    return token == VERIFICATION
 
 
 def body_to_dict(body):
@@ -79,17 +90,25 @@ async def handle_post(request):
             else:
                 print(key + " not found.")
         else:
-            message = format_response("I don't get it, try command /iwant.")
+            message = format_response(f"I don't get it, try {_commands}.")
     else:
-        message = format_response("iwant-bot does not listen to you!")
+        message = format_response("Bad token, we do not listen to you!")
 
     return web.json_response(body=message)
+
+
+async def initial_message():
+    async with Slacker(BOT_TOKEN) as slack:
+        await slack.chat.post_message('#bot-channel',
+                                      'Hi, iwant-bot server was initialized')
 
 app = web.Application()
 app.router.add_get('/', handle)
 app.router.add_post('/', handle_post)
 DB_ACCESS = db.DatabaseAccess()
 
+loop = asyncio.get_event_loop()
+loop.run_until_complete(initial_message())
 
 if __name__ == '__main__':
     web.run_app(app)
