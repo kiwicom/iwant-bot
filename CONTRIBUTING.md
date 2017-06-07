@@ -10,8 +10,8 @@
 
 ## Ways to contribute
 ---
-  - At first, check existing [issues] and our [pull requests] and try to find something 
-  - [Create an issue], if you think you have a good idea and let us consider your contribution.
+  - At first, check existing [issues] and our [pull requests] and try to find something that interests you.
+  - [Create an issue], if you have an idea and let us consider your contribution.
   - To report a bug:
       - Open an issue with the label "bug" :bug:
       - Describe expected behavior
