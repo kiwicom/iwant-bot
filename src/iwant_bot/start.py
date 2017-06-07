@@ -11,8 +11,7 @@ def add_numbers(a, b):
 
 
 def format_message(message):
-    ret = f"'{message.text}' by '{message.nickname}' at {message.when}"
-    return ret
+    return f"'{message.text}' by '{message.nickname}' at {message.when}"
 
 
 async def handle(request):
@@ -26,14 +25,13 @@ async def handle(request):
     text += ['We got these entries so far:\n']
     text += ['Or you can test POST request by command:']
     text += ['> curl -X POST  --data "user_name=0&channel_name=2']
-    text += ['  team_domain=4&team_id=5&text=6 http://localhost:8080']
+    text += ['  team_domain=4&team_id=5&text=6" http://localhost:8080']
     text.extend([format_message(msg) for msg in messages_we_got_so_far])
     return web.Response(text='\n'.join(text))
 
 
 def format_response(message="No response."):
-    ret = f'{{\n\t"text":"{message}"\n}}\n'
-    return ret
+    return f'{{\n\t"text":"{message}"\n}}\n'
 
 
 def check_post_request(body):
@@ -41,14 +39,14 @@ def check_post_request(body):
     https://api.slack.com/custom-integrations/outgoing-webhooks
     However, "trigger_word" is opional.'''
 
-    expected_fields = {"token", "team_id", "team_domain", "service_id",
-                       "channel_id", "channel_name", "timestamp",
-                       "user_id", "user_name", "text"}
+    expected_fields = {'token', 'team_id', 'team_domain', 'service_id',
+                       'channel_id', 'channel_name', 'timestamp',
+                       'user_id', 'user_name', 'text'}
     obtined_fields = set(body.keys())
 
-    if (expected_fields - obtined_fields):
-        print('POST missing these fields: '
-              ', '.join(expected_fields - obtined_fields))
+    if expected_fields - obtined_fields:
+        print("POST missing these fields: "
+              ", ".join(expected_fields - obtined_fields))
         return False
 
     return True
@@ -58,11 +56,11 @@ async def handle_post(request):
     body = await request.post()
     print(request.method)
     if check_post_request(body):
-        user_id = body["user_id"]
-        user_name = body["user_name"]
-        text = body["text"]
+        user_id = body['user_id']
+        user_name = body['user_name']
+        text = body['text']
         try:
-            trigger_word = body["trigger_word"]
+            trigger_word = body['trigger_word']
         except KeyError:
             print("No trigger_word was used.")
             trigger_word = None
@@ -70,12 +68,11 @@ async def handle_post(request):
         return web.Response(text='No valid Slack POST request.\n')
 
     if trigger_word == 'repeat':
-        message = format_response(user_name + ' wants me to ' + text)
+        message = format_response(f"{user_name} wants me to {text}")
     elif trigger_word == 'whoami':
-        message = format_response(
-            'You are ' + user_name + ' with id ' + user_id)
+        message = format_response(f"You are {user_name} with id {user_id}")
     else:
-        message = format_response(user_name + ' wrote ' + text)
+        message = format_response(f"{user_name} wrote {text}")
 
     return web.json_response(body=message)
 
