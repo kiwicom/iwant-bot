@@ -1,6 +1,6 @@
 from aiohttp import web
-
 from iwant_bot import db
+import json
 
 
 DB_ACCESS = None
@@ -30,8 +30,8 @@ async def handle(request):
     return web.Response(text='\n'.join(text))
 
 
-def format_response(message="No response."):
-    return f'{{\n\t"text":"{message}"\n}}\n'
+def format_response(message='No response.'):
+    return json.dumps({'text': message})
 
 
 def check_post_request(body):
@@ -45,8 +45,8 @@ def check_post_request(body):
     obtined_fields = set(body.keys())
 
     if expected_fields - obtined_fields:
-        print("POST missing these fields: "
-              ", ".join(expected_fields - obtined_fields))
+        print('POST missing these fields: '
+              ', '.join(expected_fields - obtined_fields))
         return False
 
     return True
@@ -62,17 +62,17 @@ async def handle_post(request):
         try:
             trigger_word = body['trigger_word']
         except KeyError:
-            print("No trigger_word was used.")
+            print('No trigger_word was used.')
             trigger_word = None
     else:
         return web.Response(text='No valid Slack POST request.\n')
 
     if trigger_word == 'repeat':
-        message = format_response(f"{user_name} wants me to {text}")
+        message = format_response(f'{user_name} wants me to {text}')
     elif trigger_word == 'whoami':
-        message = format_response(f"You are {user_name} with id {user_id}")
+        message = format_response(f'You are {user_name} with id {user_id}')
     else:
-        message = format_response(f"{user_name} wrote {text}")
+        message = format_response(f'{user_name} wrote {text}')
 
     return web.json_response(body=message)
 
