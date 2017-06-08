@@ -1,6 +1,9 @@
 version: '3'
 services:
   server:
+    environment:
+      - BOT_TOKEN
+      - VERIFICATION
     build:
       context: .
       args:

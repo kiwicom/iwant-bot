@@ -10,7 +10,7 @@ Base = declarative_base()
 
 class Nickname(Base):
     __tablename__ = 'nicknames'
-    
+
     name = Column(String, nullable=False, primary_key=True)
     first_encountered = Column(DateTime, nullable=False)
     # multiple nicknames may share a user ID
@@ -19,7 +19,7 @@ class Nickname(Base):
 
 class Message(Base):
     __tablename__ = 'messages'
-    
+
     id = Column(Integer, autoincrement=True, primary_key=True)
     when = Column(DateTime, nullable=False)
     nickname = Column(Integer, ForeignKey("nicknames.name"), nullable=False)
@@ -29,13 +29,13 @@ class Message(Base):
 class DatabaseAccess(object):
     def __init__(self):
         self.engine = self._open_database()
-            
+
     def _open_database(self):
         from sqlalchemy import create_engine
         engine = create_engine("sqlite:///lala.sqlite".format())
         Base.metadata.create_all(engine)
         return engine
-        
+
     def _make_session(self):
         from sqlalchemy.orm import sessionmaker
         Session = sessionmaker(bind=self.engine)
@@ -47,7 +47,7 @@ class DatabaseAccess(object):
             first_encountered=datetime.datetime.now(),
         )
         session.add(nickname_to_add)
-        
+
     def save_message(self, message, nickname):
         session = self._make_session()
         try:
@@ -55,7 +55,7 @@ class DatabaseAccess(object):
             nickname_is_known = query.scalar()
             if not nickname_is_known:
                 self.add_new_nickname_to_session(session, nickname)
-            
+
             message_to_add = Message(
                 nickname=nickname, text=message,
                 when=datetime.datetime.now())
@@ -64,7 +64,7 @@ class DatabaseAccess(object):
         except Exception:
             session.rollback()
             raise
-    
+
     def load_n_last_messages(self, count=None):
         session = self._make_session()
         query_results = (
