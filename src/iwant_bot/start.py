@@ -8,7 +8,17 @@ from aioslacker import Slacker
 
 DB_ACCESS = None
 
-_commands = ('/iwant',)
+VERIFICATION = getenv('VERIFICATION')
+if VERIFICATION is None:
+    print('Warning: Unknown "Verification Token".')
+
+BOT_TOKEN = getenv('BOT_TOKEN')
+if BOT_TOKEN is None:
+    print('Warning: Unknown "Bot User OAuth Access Token".')
+elif not match('xoxb', BOT_TOKEN):
+    print('Warning: "Bot User OAuth Access Token" does not begin with "xoxb".')
+
+_commands = ('/iwant', '/iwant1')
 
 
 def add_numbers(a, b):
@@ -41,7 +51,7 @@ def format_response(message='No response.'):
 
 
 def verify_post_request(token):
-    """Compare the token with the slack bot private token."""
+    """Slack `/commands` carry token, which must be same as VERIFICATION"""
     return token == VERIFICATION
 
 
@@ -88,6 +98,8 @@ async def handle_post(request):
 
 
 async def initial_message():
+    """ This sends message to the Slack. The message need to carry
+    the token BOT_TOKEN for verification by Slack."""
     async with Slacker(BOT_TOKEN) as slack:
         await slack.chat.post_message('#bot-channel',
                                       'Hi, iwant-bot server was initialized')
@@ -97,22 +109,12 @@ app.router.add_get('/', handle)
 app.router.add_post('/', handle_post)
 DB_ACCESS = db.DatabaseAccess()
 
+# This sends the initial message to the Slack
+loop = asyncio.get_event_loop()
+loop.run_until_complete(initial_message())
+
 if __name__ == '__main__':
-    """Slack slash commands carry token, which must be same as VERIFICATION"""
-    VERIFICATION = getenv('VERIFICATION')
-    if VERIFICATION is None:
-        raise EnvironmentError('Unknown "Verification Token".')
-
-    """This app sends messages to slack. 
-    The messages need to carry the token BOT_TOKEN."""
-    BOT_TOKEN = getenv('BOT_TOKEN')
-    if BOT_TOKEN is None:
-        raise EnvironmentError('Unknown "Bot User OAuth Access Token".')
-    if not match('xoxb', BOT_TOKEN):
-        raise EnvironmentError(
-            'Bad "Bot User OAuth Access Token", does not begin with "xoxb".')
-
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(initial_message())
-
     web.run_app(app)
+
+
+
