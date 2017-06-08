@@ -57,3 +57,23 @@ def test_request_cancel():
     pool.update_requests_from_storage()
     active_requests = pool.current_activities_requests
     assert len(active_requests) == 2
+
+
+def test_request_overlaps():
+    request = business.IWantRequest("john", "coffee", 1)
+    longer_request = business.IWantRequest("jack", "coffee", 2)
+    assert request.overlaps_with(longer_request)
+    assert longer_request.overlaps_with(request)
+    assert not request.conflicts_with(longer_request)
+    longer_request.timeframe_start += 70
+    assert not request.overlaps_with(longer_request)
+
+
+def test_pool_ignores_duplicates():
+    pool = make_filled_request_pool()
+    storage = pool._requests_storage
+    storage.store_request(business.IWantRequest("john", "coffee", 5))
+    storage.store_request(business.IWantRequest("james", "coffee", 5))
+    pool.update_requests_from_storage()
+    active_requests = pool.current_activities_requests
+    assert len(active_requests) == 4
