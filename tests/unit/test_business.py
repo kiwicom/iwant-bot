@@ -1,4 +1,5 @@
 import time
+import pytest
 
 from iwant_bot import business
 
@@ -15,6 +16,9 @@ def test_storage_saves_and_restores():
     storage.store_request(request)
     recovered_request = storage.get_activity_requests()[0]
     assert request == recovered_request
+    with pytest.raises(ValueError) as err:
+        storage.store_request(42)
+    assert "int" in str(err)
 
 
 def make_filled_request_pool():

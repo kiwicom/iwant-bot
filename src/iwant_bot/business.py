@@ -127,7 +127,7 @@ class MemoryRequestsStorage(RequestStorage):
         elif isinstance(request, ICancelRequest):
             destination = self._requests["cancel"]
         else:
-            raise ValueError("Can't store requests of type {type(request)}.")
+            raise ValueError(f"Can't store requests of type {type(request)}.")
         destination.append(request)
 
     def get_cancellation_requests(self):
