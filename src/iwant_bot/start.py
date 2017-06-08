@@ -8,18 +8,7 @@ from aioslacker import Slacker
 
 DB_ACCESS = None
 
-BOT_TOKEN = getenv('BOT_TOKEN')
-if BOT_TOKEN is None:
-    raise EnvironmentError('Unknown "Bot User OAuth Access Token".')
-if not match('xoxb', BOT_TOKEN):
-    raise EnvironmentError(
-        'Bad "Bot User OAuth Access Token", which does not begin with "xoxb".')
-
-VERIFICATION = getenv('VERIFICATION')
-if VERIFICATION is None:
-    raise EnvironmentError('Unknown "Verification Token".')
-
-_commands = ['/iwant']
+_commands = ('/iwant',)
 
 
 def add_numbers(a, b):
@@ -65,7 +54,7 @@ def body_to_dict(body):
         for key in keys:
             body_dict[key] = body[key]
     else:
-        raise ValueError("MultiDict contains same keys.")
+        raise ValueError('MultiDict contains same keys.')
     return body_dict
 
 
@@ -89,11 +78,11 @@ async def handle_post(request):
             if key in body:
                 return trigger_reaction(body, key)
             else:
-                print(key + " not found.")
+                print(f'{key} not found.')
         else:
             message = format_response(f"I don't get it, try {_commands}.")
     else:
-        message = format_response("Bad token, we do not listen to you!")
+        message = format_response('Bad token, we do not listen to you!')
 
     return web.json_response(body=message)
 
@@ -108,8 +97,22 @@ app.router.add_get('/', handle)
 app.router.add_post('/', handle_post)
 DB_ACCESS = db.DatabaseAccess()
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(initial_message())
-
 if __name__ == '__main__':
+    """Slack slash commands carry token, which must be same as VERIFICATION"""
+    VERIFICATION = getenv('VERIFICATION')
+    if VERIFICATION is None:
+        raise EnvironmentError('Unknown "Verification Token".')
+
+    """This app sends messages to slack. 
+    The messages need to carry the token BOT_TOKEN."""
+    BOT_TOKEN = getenv('BOT_TOKEN')
+    if BOT_TOKEN is None:
+        raise EnvironmentError('Unknown "Bot User OAuth Access Token".')
+    if not match('xoxb', BOT_TOKEN):
+        raise EnvironmentError(
+            'Bad "Bot User OAuth Access Token", does not begin with "xoxb".')
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(initial_message())
+
     web.run_app(app)

@@ -14,7 +14,9 @@ Slackbot project implemented by [Kiwi.com](Kiwi.com) interns
 ### Slack App sets up
 
 Set up your [Slack App](https://api.slack.com/slack-apps) and connect it with your Slack Team. 
-You will obtain a token for validation of incoming requests. Create a file `.env` in the repository and insert your token: `TOKEN=xoxb-111111111111-a1A1a1A1a1A1a1A1a1A1a1A1`, which is private.
+You will obtain a token for validation of incoming requests. Create a file `.env` in the repository and insert your tokens:
+`BOT_TOKEN=xoxb-111111111111-a1A1a1A1a1A1a1A1a1A1a1A1`
+`VERIFICATION=b2B2b2B2b2B2b2B2b2B2b2B2`, which are private.
 
 * _iwant-bot_ server listens to port 8080, so run [localtunnel](https://localtunnel.github.io/www/)
 or [ngrok](https://ngrok.com/) to create public adress, which you use in your Slack App. 
@@ -28,11 +30,12 @@ or [ngrok](https://ngrok.com/) to create public adress, which you use in your Sl
 
 ## Corner cases
 
-* If a problem occurs when generating the image because it was not possible to get some dependencies, it means that the `requirements.txt` file needs to be regenerated from `requirements.in`.
+* If a problem occurs when generating the image because it was not possible to get some dependencies,
+ it means that the `requirements.txt` file needs to be regenerated from `requirements.in`.
   You will need `pip-compile` tool (which is part of the `pip-tools` PyPi package) to do this.
   See `requirements.txt` for details on how to do it.
 * If the container timezone doesn't match, [override](https://docs.docker.com/compose/extends/#multiple-compose-files) the value of the `timezone` build argument.
 * Localtunnel can have problem with out network (502 bad gateway) and it is not stable, but you can define subdomain like `myslackbot.localtunnel.me`.
 * Ngrok tunnel subdomain is paid.
-* Do not forget invide your bot to the channels. 
+* Do not forget to invide your bot to the channels.
 
