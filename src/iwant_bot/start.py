@@ -2,7 +2,6 @@ from aiohttp import web
 from iwant_bot import db
 import json
 
-
 DB_ACCESS = None
 
 
@@ -24,7 +23,8 @@ async def handle(request):
     text += ['so you can do http://localhost:8080/?name=me&msg=message']
     text += ['We got these entries so far:\n']
     text += ['Or you can test POST request by command:']
-    text += ['> curl -X POST  --data "user_name=0&channel_name=2']
+    text += ['> curl -X POST  --data "user_name=0&channel_id=1&channel_name=2']
+    text += ['  &service_id=3&']
     text += ['  team_domain=4&team_id=5&text=6" http://localhost:8080']
     text.extend([format_message(msg) for msg in messages_we_got_so_far])
     return web.Response(text='\n'.join(text))
@@ -35,9 +35,9 @@ def format_response(message='No response.'):
 
 
 def check_post_request(body):
-    '''The structure of POST is given by Slack.
+    """The structure of POST is given by Slack.
     https://api.slack.com/custom-integrations/outgoing-webhooks
-    However, "trigger_word" is opional.'''
+    However, "trigger_word" is opional."""
 
     expected_fields = {'token', 'team_id', 'team_domain', 'service_id',
                        'channel_id', 'channel_name', 'timestamp',
@@ -46,7 +46,8 @@ def check_post_request(body):
 
     if expected_fields - obtined_fields:
         print('POST missing these fields: '
-              ', '.join(expected_fields - obtined_fields))
+              ', '.join(expected_fields - obtined_fields)
+              )
         return False
 
     return True
@@ -75,6 +76,7 @@ async def handle_post(request):
         message = format_response(f'{user_name} wrote {text}')
 
     return web.json_response(body=message)
+
 
 app = web.Application()
 app.router.add_get('/', handle)
