@@ -5,6 +5,7 @@ iwant coffee
 ------------
 
 * Request is remembered.
+* Duplicate requests are noticed and handled.
 * We wait for another coffee request.
 * Match the requests.
 * Notify matched people.
