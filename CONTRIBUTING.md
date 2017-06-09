@@ -32,7 +32,8 @@
 
 # Code contribution guide
 ---
-- For every contribution make a pull request and make a comment on issue with your plan of implementing this issue.
+- For every contribution make a pull request.
+- If there is an issue related with your pull request, please make a comment on issue with your plan of implementation the issue.
 - Add a tag to the issue, depending on the situation of your commit (work-in-progress, help-needed, etc.).
 - [Kiwi.com](https://www.kiwi.com/) mentors will work with you on scheme to make sure you are on the right track to prevent any wasted work and catch design issues early on.
 - Implement the solution of your issue in your pull request and iterate from there.
@@ -46,7 +47,6 @@ Please,
 - Keep the first line short, limit to 50 characters or less.
 - Keep the second line empty.
 - Limit the every other line to 72 characters or less.
-- Reference issues and pull requests liberally.
 - Keep in mind that commit messages are __mainly for the other people__, code is way more often read than written.
 - If you are using _git revert_ or undoing commit, default commit message specifies which commit you want to revert, but it is not enough to know __why__ you are undoing it, please add more comments and specify why are you undoing the commit as opposed to fixing the bugs and mistakes.
 #### Example
