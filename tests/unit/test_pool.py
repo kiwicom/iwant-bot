@@ -20,23 +20,6 @@ def test_requests_pool_filters_relevant():
     assert len(active_requests) == 3
 
 
-def test_request_cancel():
-    pool = make_filled_request_pool()
-    storage = pool._requests_storage
-
-    cancel_picnic = requests.ICancelRequest("olivia", "picnic", 2)
-    storage.store_request(cancel_picnic)
-    pool.update_requests_from_storage()
-    active_requests = pool.current_activities_requests
-    assert len(active_requests) == 2
-
-    cancel_coffee_late = requests.ICancelRequest("john", "coffee", 6)
-    storage.store_request(cancel_coffee_late)
-    pool.update_requests_from_storage()
-    active_requests = pool.current_activities_requests
-    assert len(active_requests) == 2
-
-
 def test_pool_ignores_duplicates():
     pool = make_filled_request_pool()
     storage = pool._requests_storage

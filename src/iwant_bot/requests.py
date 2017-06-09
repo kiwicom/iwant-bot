@@ -35,17 +35,3 @@ class IWantRequest(Request):
                      and self.person_id == other_request.person_id
                      and overlaps)
         return conflicts
-
-
-class ICancelRequest(Request):
-    def __init__(self, person_id, activity, offset_in_minutes):
-        super().__init__(person_id)
-        self.activity = activity
-        self.time_of_request = time.time() + offset_in_minutes * 60
-
-    def cancels(self, request):
-        if (request.person_id == self.person_id
-                and request.is_active_by(self.time_of_request)):
-            return True
-        else:
-            return False

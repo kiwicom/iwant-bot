@@ -12,7 +12,6 @@ class RequestsPool(object):
 
         self._time_relevant_requests = set()
         self._blacklisted_requests = set()
-        self._cancelled_requests = set()
         self._time_conflicting_requests = set()
 
     def update_requests_from_storage(self):
@@ -21,17 +20,9 @@ class RequestsPool(object):
                                         if request.is_active_now()}
 
         self._blacklisted_requests = set()
-        self._set_cancelled_requests()
         self._set_time_conflicting_requests()
-        self._blacklisted_requests = self._cancelled_requests | self._time_conflicting_requests
+        self._blacklisted_requests = self._time_conflicting_requests
         self.current_activities_requests = self._time_relevant_requests - self._blacklisted_requests
-
-    def _set_cancelled_requests(self):
-        self._cancelled_requests = set()
-        cancellation_requests = self._requests_storage.get_cancellation_requests()
-        for cancellation_request in cancellation_requests:
-            self._cancelled_requests |= {req for req in self._time_relevant_requests
-                                         if cancellation_request.cancels(req)}
 
     # TODO: There exist intricate strategies that would pick the request
     # that conflict with others most

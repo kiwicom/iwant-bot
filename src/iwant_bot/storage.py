@@ -1,7 +1,7 @@
 import abc
 import collections
 
-from iwant_bot.requests import IWantRequest, ICancelRequest
+from iwant_bot.requests import IWantRequest
 
 
 class RequestStorage(abc.ABC):
@@ -17,10 +17,6 @@ class RequestStorage(abc.ABC):
         Raises:
             ValueError if the request structure is not recognized.
         """
-        pass
-
-    @abc.abstractmethod
-    def get_cancellation_requests(self):
         pass
 
     @abc.abstractmethod
@@ -42,14 +38,9 @@ class MemoryRequestsStorage(RequestStorage):
     def store_request(self, request):
         if isinstance(request, IWantRequest):
             destination = self._requests["activity"]
-        elif isinstance(request, ICancelRequest):
-            destination = self._requests["cancel"]
         else:
             raise ValueError(f"Can't store requests of type {type(request)}.")
         destination.append(request)
-
-    def get_cancellation_requests(self):
-        return list(self._requests["cancel"])
 
     def get_activity_requests(self, activity=None):
         ret = list(self._requests["activity"])
