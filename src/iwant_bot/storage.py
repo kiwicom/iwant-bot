@@ -18,7 +18,7 @@ class RequestStorage(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_activity_requests(self):
+    def get_activity_requests(self, activity=None):
         pass
 
 
@@ -38,6 +38,9 @@ class MemoryRequestsStorage(RequestStorage):
     def get_cancellation_requests(self):
         return list(self._requests["cancel"])
 
-    def get_activity_requests(self):
-        return list(self._requests["activity"])
-
+    def get_activity_requests(self, activity=None):
+        ret = list(self._requests["activity"])
+        if activity is not None:
+            ret = [req for req in ret
+                   if req.activity == activity]
+        return ret
