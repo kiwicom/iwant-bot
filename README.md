@@ -37,5 +37,5 @@ or [ngrok](https://ngrok.com/) to create public adress, which you use in your Sl
 * If the container timezone doesn't match, [override](https://docs.docker.com/compose/extends/#multiple-compose-files) the value of the `timezone` build argument.
 * Localtunnel can have problem with out network (502 bad gateway) and it is not stable, but you can define subdomain like `myslackbot.localtunnel.me`.
 * Ngrok tunnel subdomain is paid.
-* Do not forget to invide your bot to the channels.
+* Do not forget to invite your bot to the channels.
 

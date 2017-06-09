@@ -40,7 +40,6 @@ async def handle(request):
     text += ['We got these entries so far:\n']
     text += ['Or you can test POST request by command:']
     text += ['> curl -X POST  --data "user_name=0&channel_id=1&channel_name=2']
-    text += ['  &service_id=3&']
     text += ['  team_domain=4&team_id=5&text=6" http://localhost:8080']
     text.extend([format_message(msg) for msg in messages_we_got_so_far])
     return web.Response(text='\n'.join(text))
@@ -115,6 +114,3 @@ loop.run_until_complete(initial_message())
 
 if __name__ == '__main__':
     web.run_app(app)
-
-
-
