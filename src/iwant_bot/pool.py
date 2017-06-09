@@ -1,6 +1,11 @@
 
 
 class RequestsPool(object):
+    """
+    This class is a layer between the storage layer and higher-level
+    logic layer --- it pulls requests from the storage and exposes
+    only the relevant requests.
+    """
     def __init__(self, storage):
         self._requests_storage = storage
         self.current_activities_requests = set()

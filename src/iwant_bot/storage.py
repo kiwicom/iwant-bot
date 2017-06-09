@@ -11,6 +11,12 @@ class RequestStorage(abc.ABC):
 
     @abc.abstractmethod
     def store_request(self, request):
+        """
+        Stores a Request data structure so it can be retreived.
+
+        Raises:
+            ValueError if the request structure is not recognized.
+        """
         pass
 
     @abc.abstractmethod
@@ -19,6 +25,13 @@ class RequestStorage(abc.ABC):
 
     @abc.abstractmethod
     def get_activity_requests(self, activity=None):
+        """
+        Retreives an activity-related request
+
+        Args:
+            activity: If not none, all retreived requests will be related
+            to this activity.
+        """
         pass
 
 
