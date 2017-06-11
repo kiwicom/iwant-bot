@@ -6,6 +6,7 @@ class RequestsPool(object):
     logic layer --- it pulls requests from the storage and exposes
     only the relevant requests.
     """
+
     def __init__(self, storage):
         self._requests_storage = storage
         self.current_activities_requests = set()
@@ -22,7 +23,8 @@ class RequestsPool(object):
         self._blacklisted_requests = set()
         self._set_time_conflicting_requests()
         self._blacklisted_requests = self._time_conflicting_requests
-        self.current_activities_requests = self._time_relevant_requests - self._blacklisted_requests
+        self.current_activities_requests = self._time_relevant_requests \
+            - self._blacklisted_requests
 
     # TODO: There exist intricate strategies that would pick the request
     # that conflict with others most
