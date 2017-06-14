@@ -23,6 +23,7 @@ def test_requests_pool_filters_relevant():
     active_requests = pool.current_activities_requests
     assert len(active_requests) == 7
 
+
 def test_pairing_activities():
     pool = make_filled_request_pool()
     for activity in pool.activity_list:
@@ -30,9 +31,11 @@ def test_pairing_activities():
     assert len(pool.pairs['picnic']) == 1
     assert len(pool.pairs['coffee']) == 2
 
+
 def test_number_of_activities():
     pool = make_filled_request_pool()
     assert len(pool.activity_list) == 2
+
 
 def test_pool_ignores_duplicates():
     pool = make_filled_request_pool()
