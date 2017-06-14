@@ -1,4 +1,5 @@
-
+import asyncio
+import collections
 
 class RequestsPool(object):
     """
@@ -8,9 +9,13 @@ class RequestsPool(object):
     """
 
     def __init__(self, storage):
+        # this is main loop which operates workers
+        self._loop = asyncio.get_event_loop()
+        self.activity_list = list()
+        self.req_by_activities = collections.defaultdict(list)
+        self.pairs = collections.defaultdict(list)
         self._requests_storage = storage
         self.current_activities_requests = set()
-
         self._time_relevant_requests = set()
         self._blacklisted_requests = set()
         self._time_conflicting_requests = set()
@@ -25,6 +30,44 @@ class RequestsPool(object):
         self._blacklisted_requests = self._time_conflicting_requests
         self.current_activities_requests = self._time_relevant_requests \
             - self._blacklisted_requests
+
+        for req in self.current_activities_requests:
+            if req.activity not in self.activity_list:
+                self.activity_list.append(req.activity)
+
+            destination = self.req_by_activities[req.activity]
+            if req.activity not in self.req_by_activities.keys():
+                self.req_by_activities[req.activity] = req
+            elif req not in destination:
+                destination.append(req)
+
+    def make_pairs(self, activity):
+        source = self.req_by_activities[activity]
+        destination = self.pairs[activity]
+        while len(source) > 1:
+            request1 = source.pop()
+            request2 = source.pop()
+            paired = self.pair(request1, request2)
+            destination.append(paired)
+
+    async def check_expired(self):
+        pass
+
+    async def coro(self):
+        pass
+
+    @staticmethod
+    def pair(request1, request2):
+        pair = {request1, request2}
+        return pair
+
+    @asyncio.coroutine
+    def create_worker(self):
+        return (
+            yield from asyncio.gather(*[
+                self.make_pairs(activity) for activity in self.activity_list
+            ])
+        )
 
     # TODO: There exist intricate strategies that would pick the request
     # that conflict with others most
