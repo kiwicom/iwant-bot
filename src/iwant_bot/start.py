@@ -1,8 +1,24 @@
+import asyncio
 from aiohttp import web
 from iwant_bot import db
 import json
+from os import getenv
+from re import match
+from aioslacker import Slacker
 
 DB_ACCESS = None
+
+VERIFICATION = getenv('VERIFICATION')
+if VERIFICATION is None:
+    print('Warning: Unknown "Verification Token".')
+
+BOT_TOKEN = getenv('BOT_TOKEN')
+if BOT_TOKEN is None:
+    print('Warning: Unknown "Bot User OAuth Access Token".')
+elif not match('xoxb', BOT_TOKEN):
+    print('Warning: "Bot User OAuth Access Token" does not begin with "xoxb".')
+
+_commands = ('/iwant', '/iwant1')
 
 
 def add_numbers(a, b):
@@ -24,7 +40,6 @@ async def handle(request):
     text += ['We got these entries so far:\n']
     text += ['Or you can test POST request by command:']
     text += ['> curl -X POST  --data "user_name=0&channel_id=1&channel_name=2']
-    text += ['  &service_id=3&']
     text += ['  team_domain=4&team_id=5&text=6" http://localhost:8080']
     text.extend([format_message(msg) for msg in messages_we_got_so_far])
     return web.Response(text='\n'.join(text))
@@ -34,54 +49,68 @@ def format_response(message='No response.'):
     return json.dumps({'text': message})
 
 
-def check_post_request(body):
-    """The structure of POST is given by Slack.
-    https://api.slack.com/custom-integrations/outgoing-webhooks
-    However, "trigger_word" is opional."""
+def verify_post_request(token):
+    """Slack `/commands` carry token, which must be same as VERIFICATION"""
+    return token == VERIFICATION
 
-    expected_fields = {'token', 'team_id', 'team_domain', 'service_id',
-                       'channel_id', 'channel_name', 'timestamp',
-                       'user_id', 'user_name', 'text'}
-    obtined_fields = set(body.keys())
 
-    if expected_fields - obtined_fields:
-        print('POST missing these fields: '
-              ', '.join(expected_fields - obtined_fields)
-              )
-        return False
+def body_to_dict(body):
+    """Try to convert MultiDictProxy to dictionary.
+    Not handled ValueError"""
+    keys = set(body.keys())
+    if len(keys) == len(body):
+        body_dict = {}
+        for key in keys:
+            body_dict[key] = body[key]
+    else:
+        raise ValueError('MultiDict contains same keys.')
+    return body_dict
 
-    return True
+
+def trigger_reaction(body, trigger):
+    """Commands: /iwant,
+    Trigger_words: None"""
+    message = format_response(
+        f"{body['user_name']} used {body[trigger]} with {body['text']}.")
+    return web.json_response(body=message)
 
 
 async def handle_post(request):
-    body = await request.post()
-    print(request.method)
-    if check_post_request(body):
-        user_id = body['user_id']
-        user_name = body['user_name']
-        text = body['text']
-        try:
-            trigger_word = body['trigger_word']
-        except KeyError:
-            print('No trigger_word was used.')
-            trigger_word = None
-    else:
-        return web.Response(text='No valid Slack POST request.\n')
+    body = body_to_dict(await request.post())
+    print(body)
 
-    if trigger_word == 'repeat':
-        message = format_response(f'{user_name} wants me to {text}')
-    elif trigger_word == 'whoami':
-        message = format_response(f'You are {user_name} with id {user_id}')
+    if verify_post_request(body['token']):  # error if not 'token'
+        """Separation of cases like /iwant commands, responses, etc."""
+
+        triggers = ['command', 'trigger_word']  # stops with the first match
+        for key in triggers:
+            if key in body:
+                return trigger_reaction(body, key)
+            else:
+                print(f'{key} not found.')
+        else:
+            message = format_response(f"I don't get it, try {_commands}.")
     else:
-        message = format_response(f'{user_name} wrote {text}')
+        message = format_response('Bad token, we do not listen to you!')
 
     return web.json_response(body=message)
 
+
+async def initial_message():
+    """ This sends message to the Slack. The message need to carry
+    the token BOT_TOKEN for verification by Slack."""
+    async with Slacker(BOT_TOKEN) as slack:
+        await slack.chat.post_message('#bot-channel',
+                                      'Hi, iwant-bot server was initialized')
 
 app = web.Application()
 app.router.add_get('/', handle)
 app.router.add_post('/', handle_post)
 DB_ACCESS = db.DatabaseAccess()
+
+# This sends the initial message to the Slack
+loop = asyncio.get_event_loop()
+loop.run_until_complete(initial_message())
 
 if __name__ == '__main__':
     web.run_app(app)
