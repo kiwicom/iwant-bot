@@ -94,3 +94,6 @@ ENV/
 # sqlalchemy databases
 *.sqlite
 *.sqlite3
+
+# Jetbrains IDE configurations
+.idea/
