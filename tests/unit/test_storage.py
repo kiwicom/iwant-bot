@@ -15,6 +15,21 @@ def test_storage_saves_and_restores():
     assert "int" in str(err)
 
 
+def test_storage_removes():
+    storage = MemoryRequestsStorage()
+    request = IWantRequest("john", "coffee", 0)
+    storage.store_request(request)
+    request = IWantRequest("john", "coffee", 0)
+    request.id = "foo"
+    storage.store_request(request)
+    with pytest.raises(KeyError):
+        storage.remove_activity_request("bar", "jack")
+    with pytest.raises(KeyError):
+        storage.remove_activity_request("foo", "jack")
+    storage.remove_activity_request("foo", "john")
+    assert len(storage.get_activity_requests()) == 1
+
+
 def test_storage_filters_activities():
     storage = MemoryRequestsStorage()
     storage.store_request(IWantRequest("john", "coffee", 1))

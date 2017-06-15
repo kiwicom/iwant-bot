@@ -30,6 +30,16 @@ class RequestStorage(abc.ABC):
         """
         pass
 
+    @abc.abstractmethod
+    def remove_activity_request(self, request_id, person_id):
+        """
+        Remove a request from storage
+
+        Raises:
+            KeyError if there is no request of such ID issued by that person.
+        """
+        pass
+
 
 class MemoryRequestsStorage(RequestStorage):
     def __init__(self):
@@ -48,3 +58,16 @@ class MemoryRequestsStorage(RequestStorage):
             ret = [req for req in ret
                    if req.activity == activity]
         return ret
+
+    def remove_activity_request(self, request_id, person_id):
+        print(request_id, person_id)
+        request_to_remove = None
+        for request in self._requests["activity"]:
+            if request.id == request_id and request.person_id == person_id:
+                request_to_remove = request
+                break
+        if request_to_remove is None:
+            raise KeyError(
+                f"There is no request of ID '{request_id}"
+            )
+        self._requests["activity"].remove(request)

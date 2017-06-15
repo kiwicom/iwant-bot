@@ -35,3 +35,9 @@ class IWantRequest(Request):
                      and self.person_id == other_request.person_id
                      and overlaps)
         return conflicts
+
+
+class CancellationRequest(Request):
+    def __init__(self, person_id, cancelling_request_id):
+        super().__init__(person_id)
+        self.cancelling_request_id = cancelling_request_id
