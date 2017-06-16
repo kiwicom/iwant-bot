@@ -60,14 +60,15 @@ class MemoryRequestsStorage(RequestStorage):
         return ret
 
     def remove_activity_request(self, request_id, person_id):
-        print(request_id, person_id)
         request_to_remove = None
         for request in self._requests["activity"]:
             if request.id == request_id and request.person_id == person_id:
                 request_to_remove = request
                 break
         if request_to_remove is None:
-            raise KeyError(
-                f"There is no request of ID '{request_id}"
+            exception = KeyError(
+                f"There is no request of ID '{request_id}' by '{person_id}'",
+                request_id, person_id,
             )
+            raise exception
         self._requests["activity"].remove(request)
