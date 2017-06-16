@@ -41,6 +41,18 @@ def add_requests_canceller(pipeline, req_storage):
     pipeline.add_block('cancel', block)
 
 
+def add_cancelled_requests_notifier(pipeline, list_container):
+    block = request_acquisition.NotifierOfCancelled()
+    block.append_callback(lambda req: list_container.append(req))
+    pipeline.add_block('cancel', block)
+
+
+def add_not_cancelled_requests_notifier(pipeline, list_container):
+    block = request_acquisition.NotifierOfNotCancelled()
+    block.append_callback(lambda req: list_container.append(req))
+    pipeline.add_block('cancel', block)
+
+
 def test_notifier(pipeline):
     requests = []
     add_notifier(pipeline, requests)

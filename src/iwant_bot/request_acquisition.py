@@ -46,6 +46,22 @@ class Notifier(AbstractBlock):
         return request
 
 
+class NotifierOfCancelled(Notifier):
+    def pass_request(self, request):
+        for cb in self._callbacks:
+            if request.cancellation_succeeded:
+                cb(request)
+        return request
+
+
+class NotifierOfNotCancelled(Notifier):
+    def pass_request(self, request):
+        for cb in self._callbacks:
+            if not request.cancellation_succeeded:
+                cb(request)
+        return request
+
+
 class Breaker(AbstractBlock):
     def pass_request(self, request):
         return None
@@ -76,5 +92,12 @@ class Canceller(AbstractBlock):
         self._storage = storage
 
     def pass_request(self, request):
-        self._storage.remove_activity_request(request.cancelling_request_id, request.person_id)
-        return None
+        request.cancellation_succeeded = False
+        try:
+            self._storage.remove_activity_request(request.cancelling_request_id, request.person_id)
+            request.cancellation_succeeded = True
+        except KeyError:
+            # Request was not cancelled, but in case of a KeyError,
+            # it is not a big deal
+            pass
+        return request
