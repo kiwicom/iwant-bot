@@ -8,6 +8,7 @@ import time
 from dateparser import parse
 from datetime import datetime
 from aioslacker import Slacker
+from slacker import Slacker as Slack
 
 DB_ACCESS = None
 
@@ -22,8 +23,11 @@ elif not re.match('xoxb', BOT_TOKEN):
     print('Warning: "Bot User OAuth Access Token" does not begin with "xoxb".')
 
 _commands = ('/iwant', '/iwant1')
-_iwant_activities = ('coffee',)
+_iwant_activities = ('coffee', 'snack')
 _duration = 900.0   # Implicit duration of activity in seconds.
+_duration_max = 43200   # 12 hours is maximal duration of any request.
+_callback_id = 1111     # testing random number
+
 
 class TokenError(Exception):
     pass
@@ -53,8 +57,24 @@ async def handle(request):
 
 
 async def handle_button(request):
-    pass
+    payload = body_to_dict(await request.post())
+    #print(payload)
+    body = json.loads(payload['payload'])
+    actions = body['actions']
+    print(actions)
 
+    if actions[0]['name'] == 'Accept' and actions[0]['type'] == 'button' and actions[0]['value'] != '0':
+        # upgrade and/or create request with previous `callback_id`
+        upgrade_iwant_request(body['callback_id'])
+        return web.json_response(body=format_response(f"Add request: {actions[0]['value']}"))
+    elif actions[0]['name'] == 'Reject' and actions[0]['type'] == 'button' and actions[0]['value'] == '0':
+        return web.json_response(body=format_response(f"Invitation was rejected."))
+    else:
+        return web.json_response(body=format_response(f"Unknown action."))
+
+
+def upgrade_iwant_request(callback_id):
+    pass
 
 
 async def handle_iwant(request):
@@ -75,7 +95,14 @@ async def handle_iwant(request):
 
     # Return iwant help, when no activity was selected.
     if any_request:
-        return web.json_response(body=format_response('Got it!'))
+        time_minutes = round((body['duration_ts'] - body['incoming_ts']) / 60)
+        return web.json_response(
+          body=format_response(
+            f"{', '.join(body['activity'])}! I am looking for someone for {time_minutes} minutes."
+          )
+        )
+
+
     else:
         return web.json_response(body=format_response(iwant_help_message()))
 
@@ -85,33 +112,114 @@ def iwant_activity(body: dict) -> bool:
     Suppose a lot of assumptions...
     ...nobody with the name @coffee, activity 'invite' etc."""
     any_activity = False
+    body['activity'] = []
+    body['callback_id'] = []
     for activity in _iwant_activities:
         if re.search(activity, body['text'].lower()):
             any_activity = True
-            create_iwant_request(body, activity, iwant_duration(body['text']))
-
+            body['duration_ts'] = body['incoming_ts'] + iwant_duration(body['text'])
+            body['activity'].append(activity)
+            body['callback_id'].append(create_iwant_request(body))
+            iwant_invite(body)
     return any_activity
+
 
 def iwant_duration(text: str) -> float:
     """Remove commands, activities, and invited people.
     Only text with time should leave (and some preposition).
     :return: duration of activity in seconds."""
     activities = '|'.join(_iwant_activities)    # Variable is used in pattern.
-    text_time = re.sub(f'(/iwant\w*|{activities}|invite\w*|@\w+)', '', text)
-    now_plus_duration = parse(text_time)
+    text_time = re.sub(f'({activities}|@[a-z0-9][-_.a-z0-9]{{1,20}}|with|or|and|[.!?]\s*$)', '', text)
+    print(text_time)
+    now_plus_duration = parse(text_time)  #zlobi... odmazat .,; a jine symboly, napsat testy.
+    print(now_plus_duration)
     if now_plus_duration is None:
         return _duration  # Implicit value
     else:
-        return max((now_plus_duration - datetime.now()).total_seconds(), 1.0)
+        # minimal valid time is 1s and maximal is _duration_max seconds
+        return min(max((now_plus_duration - datetime.now()).total_seconds(), 1.0), _duration_max)
 
+
+def iwant_invite(body: dict):
+    """Send notification to mentioned people, that someone wants to do something collectively."""
+    slack = Slack(BOT_TOKEN)
+    user_names = get_users(slack)
+    for name in user_names:
+        if re.search(f'@{name[0]}', body['text']):
+            (text, attachment) = iwant_create_invitation(body, name[0], name[1])
+            slack.chat.post_message(channel=f'@{name[0]}',
+                                    text=text,
+                                    attachments=json.dumps(attachment))
+
+
+def iwant_create_invitation(body, name, name_id):
+    """Create message with buttons (accept or reject) for someone,
+    who was invited to join to some activity."""
+    time_minutes = round((body['duration_ts'] - body['incoming_ts']) / 60)
+    text = (f"Hi, @{body['user_name']} invites you to join "
+            f"{body['activity'][-1]} in {time_minutes} minutes.")
+    attachment = [
+        {
+            'text': 'Will you join?',
+            'callback_id': f"{body['callback_id'][-1]}",
+            'fallback': 'You do not want to join.',
+            #'color' : '#3AA3E3',
+            'attachment_type': 'default',
+            'actions': [
+                {
+                    'name': 'Accept',
+                    'text': 'Accept',
+                    'type': 'button',
+                    'value': f"{name} {name_id} {body['activity'][-1]} in {time_minutes} minutes."
+                },
+                {
+                    'name': 'Reject',
+                    'text': 'Reject',
+                    'type': 'button',
+                    'value': '0'
+                }
+            ]
+        }
+    ]
+    print(text)
+    print(attachment)
+    return (text, attachment)
+
+
+# button = [
+#     {'text': 'Testing ok button',
+#      "callback_id": "test11", 'actions': [
+#             {'name': 'test', 'text': 'ok', 'type': 'button', 'value': 1},
+#             {'name': 'test', 'text': 'no', 'type': 'button', 'value': 0}
+#         ]
+#     },
+#     {'text': 'Test 2 "ok button"',
+#      "callback_id": "test22", 'actions': [
+#         {'name': 'test', 'text': 'OK', 'type': 'button', 'value': 1},
+#         {'name': 'test', 'text': 'NO', 'type': 'button', 'value': 0}
+#     ]
+#     }
+# ]
+# print(json.dumps(button))
+
+
+
+def get_users(slack):
+    user_list = []
+    for user in slack.users.list().body['members']:
+        user_list.append((user['name'], user['id']))
+    return user_list
 
 
 # asyncio?
-def create_iwant_request(body: dict, activity: str, duration: float):
+def create_iwant_request(body: dict) -> str:
     """Create and pass on request to business logic"""
-    print(activity)
-    print(body)
-    print(duration)
+    global _callback_id
+    for activity in body['activity']:
+            print(activity)
+    print(body['incoming_ts'], body['duration_ts'])
+    _callback_id += 1
+    return _callback_id  # Storage ID of the request
 
 
 async def handle_post(request):
@@ -175,10 +283,10 @@ def body_to_dict(body):
 
 
 
-# async def initial_message():
-#     """ This sends message to the Slack. The message need to carry
-#     the token BOT_TOKEN for verification by Slack."""
-#     async with Slacker(BOT_TOKEN) as slack:
+async def initial_message():
+    """ This sends message to the Slack. The message need to carry
+    the token BOT_TOKEN for verification by Slack."""
+    async with Slacker(BOT_TOKEN) as slack:
         # button = [
         #     {'text': 'Testing ok button',
         #      "callback_id": "test11", 'actions': [
@@ -199,6 +307,12 @@ def body_to_dict(body):
         #                               attachments=json.dumps(button))
         # await slack.chat.post_message('#bot-channel',
         #                               iwant_help_message())
+        # print(1)
+        # slack = Slacker(BOT_TOKEN)
+        test = await slack.users.list()
+        for i in test.body['members']:
+            print(i['name'], i['id'])
+
 
 def iwant_help_message() -> str:
     """Create help message response for /iwant command.
@@ -209,8 +323,8 @@ def iwant_help_message() -> str:
                'anyone during a next few minutes. '
                'The activities are `%s`.\nExamples:\n'
                '`/iwant coffee`\n'
-               '`/iwant coffee and invite @alex`\n'
-               '`/iwant coffee in 15 min @alex @betty`\n'
+               '`/iwant snack in 1h 12m @alex`\n'
+               '`/iwant coffee and snack in 15 min with @alex and @betty`\n'
                )
     return message % ('`, `'.join(_iwant_activities))
 
@@ -224,8 +338,8 @@ app.router.add_post('/button', handle_button)
 DB_ACCESS = db.DatabaseAccess()
 
 # This sends the initial message to the Slack
-# loop = asyncio.get_event_loop()
-# loop.run_until_complete(initial_message())
+loop = asyncio.get_event_loop()
+loop.run_until_complete(initial_message())
 
 if __name__ == '__main__':
     web.run_app(app)
