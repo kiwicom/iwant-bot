@@ -63,12 +63,18 @@ async def handle_button(request):
     actions = body['actions']
     print(actions)
 
-    if actions[0]['name'] == 'Accept' and actions[0]['type'] == 'button' and actions[0]['value'] != '0':
+    if actions[0]['name'] == 'Invite' and actions[0]['type'] == 'button' and actions[0]['value'] != '0':
         # upgrade and/or create request with previous `callback_id`
         upgrade_iwant_request(body['callback_id'])
         return web.json_response(body=format_response(f"Add request: {actions[0]['value']}"))
-    elif actions[0]['name'] == 'Reject' and actions[0]['type'] == 'button' and actions[0]['value'] == '0':
+    elif actions[0]['name'] == 'Invite' and actions[0]['type'] == 'button' and actions[0]['value'] == '0':
         return web.json_response(body=format_response(f"Invitation was rejected."))
+    elif actions[0]['name'] == 'Time' and actions[0]['type'] == 'button':
+        for i in (body['callback_id']):
+            upgrade_iwant_request(body['callback_id'])
+            print(f"change duration of request to {actions[0]['value']}")
+        return web.json_response(body=format_response(
+            f"Duration of activity was set to {actions[0]['value']} seconds"))
     else:
         return web.json_response(body=format_response(f"Unknown action."))
 
@@ -96,15 +102,52 @@ async def handle_iwant(request):
     # Return iwant help, when no activity was selected.
     if any_request:
         time_minutes = round((body['duration_ts'] - body['incoming_ts']) / 60)
-        return web.json_response(
-          body=format_response(
-            f"{', '.join(body['activity'])}! I am looking for someone for {time_minutes} minutes."
-          )
-        )
-
+        return web.json_response(iwant_duration_buttons(body))
+          # body=format_response(
+          #   "text": f"{', '.join(body['activity'])}! I am looking for someone for {time_minutes} minutes."
+          #    "attachments":json.dumps(iwant_duration_buttons(body))
+          # )
+       # )
 
     else:
         return web.json_response(body=format_response(iwant_help_message()))
+
+
+def iwant_duration_buttons(body):
+    """Create message with buttons to adjust request duration"""
+    time_minutes = round((body['duration_ts'] - body['incoming_ts']) / 60)
+    text = f"{', '.join(body['activity'])}! I am looking for someone for {time_minutes} minutes."
+    attachment = [
+        {
+            'text': 'Would you like to change the duration to:',
+            'callback_id': f"{body['callback_id']}",
+            'fallback': 'Never mind.',
+            #'color' : '#3AA3E3',
+            'attachment_type': 'default',
+            'actions': [
+                {
+                    'name': 'Time',
+                    'text': '30 min',
+                    'type': 'button',
+                    'value': '1800'
+                },
+                {
+                    'name': 'Time',
+                    'text': '1 hour',
+                    'type': 'button',
+                    'value': '3600'
+                },
+                {
+                    'name': 'Time',
+                    'text': 'Cancel',
+                    'type': 'button',
+                    'value': '0'
+                }
+            ]
+        }
+    ]
+    return {'text': text, 'attachments': attachment}
+
 
 
 def iwant_activity(body: dict) -> bool:
@@ -167,13 +210,13 @@ def iwant_create_invitation(body, name, name_id):
             'attachment_type': 'default',
             'actions': [
                 {
-                    'name': 'Accept',
+                    'name': 'Invite',
                     'text': 'Accept',
                     'type': 'button',
                     'value': f"{name} {name_id} {body['activity'][-1]} in {time_minutes} minutes."
                 },
                 {
-                    'name': 'Reject',
+                    'name': 'Invite',
                     'text': 'Reject',
                     'type': 'button',
                     'value': '0'
@@ -181,8 +224,6 @@ def iwant_create_invitation(body, name, name_id):
             ]
         }
     ]
-    print(text)
-    print(attachment)
     return (text, attachment)
 
 
