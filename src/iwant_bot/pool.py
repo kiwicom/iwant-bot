@@ -1,7 +1,7 @@
 import asyncio
 import collections
-
 from iwant_bot.ignore import IgnoreList
+
 
 class RequestsPool(object):
     """
