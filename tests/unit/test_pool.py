@@ -1,7 +1,6 @@
 from iwant_bot import requests
 from iwant_bot.storage import MemoryRequestsStorage
 from iwant_bot.pool import RequestsPool
-from iwant_bot.ignore import IgnoreList
 
 
 def make_filled_request_pool():
