@@ -1,6 +1,7 @@
 import asyncio
 import collections
 
+from iwant_bot.ignore import IgnoreList
 
 class RequestsPool(object):
     """
@@ -20,6 +21,7 @@ class RequestsPool(object):
         self._time_relevant_requests = set()
         self._blacklisted_requests = set()
         self._time_conflicting_requests = set()
+        self.users = IgnoreList()
 
     def update_requests_from_storage(self):
         activity_requests = self._requests_storage.get_activity_requests()
@@ -43,13 +45,20 @@ class RequestsPool(object):
                 destination.append(req)
 
     def make_pairs(self, activity):
+        users = self.users
         source = self.req_by_activities[activity]
         destination = self.pairs[activity]
-        while len(source) > 1:
-            request1 = source.pop()
-            request2 = source.pop()
-            paired = self.pair(request1, request2)
-            destination.append(paired)
+        if len(source) > 1:
+            for request1 in source:
+                source.remove(request1)
+                for request2 in source:
+                    if users.is_ignored(request1.person_id, request2.person_id):
+                        continue
+                    paired = self.pair(request1, request2)
+                    source.remove(request2)
+                    destination.append(paired)
+                    break
+                source.append(request1)
 
     async def check_expired(self):
         pass
