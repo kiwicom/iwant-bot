@@ -188,7 +188,7 @@ def iwant_invite(body: dict):
     slack = Slack(BOT_TOKEN)
     user_names = get_users(slack)
     for name in user_names:
-        if re.search(f'@{name[0]}', body['text']):
+        if re.search(f'@*{name[0]}', body['text']):
             (text, attachment) = iwant_create_invitation(body, name[0], name[1])
             slack.chat.post_message(channel=f'@{name[0]}',
                                     text=text,
@@ -373,8 +373,8 @@ def iwant_help_message() -> str:
 app = web.Application()
 app.router.add_get('/', handle)
 app.router.add_post('/', handle_post)
-app.router.add_post('/iwant', handle_iwant)
-app.router.add_post('/button', handle_button)
+app.router.add_post('/slack/iwant', handle_iwant)
+app.router.add_post('/slack/button', handle_button)
 
 DB_ACCESS = db.DatabaseAccess()
 
