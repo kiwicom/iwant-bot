@@ -21,10 +21,6 @@ elif not match('xoxb', BOT_TOKEN):
 _commands = ('/iwant', '/iwant1')
 
 
-def add_numbers(a, b):
-    return a + b
-
-
 def format_message(message):
     return f"'{message.text}' by '{message.nickname}' at {message.when}"
 
