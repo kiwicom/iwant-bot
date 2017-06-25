@@ -19,7 +19,7 @@ _commands = ('/iwant', '/iwant1')
 
 
 def format_message(message):
-    return f"'{message.text}' by '{message.nickname}' at {message.when}"
+    return message
 
 
 async def handle(request):
@@ -28,7 +28,7 @@ async def handle(request):
 
     text = ["We recognize the 'name' and 'msg' GET query attributes,"]
     text += ['so you can do http://localhost:8080/?name=me&msg=message']
-    text += [f'Now, we got: {format_message(message)} by {name}']
+    text += [f"Now, we got: '{format_message(message)}' by {name}"]
     text += ['Or you can test POST request by command:']
     text += ['> curl -X POST  --data "user_name=0&channel_id=1&channel_name=2']
     text += ['  team_domain=4&team_id=5&text=6" http://localhost:8080']
