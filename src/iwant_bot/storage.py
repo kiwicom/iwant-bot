@@ -72,3 +72,50 @@ class MemoryRequestsStorage(RequestStorage):
             )
             raise exception
         self._requests["activity"].remove(request)
+
+
+class TaskStorage(abc.ABC):
+    @abc.abstractmethod
+    def __init__(self):
+        pass
+
+    @abc.abstractmethod
+    def store_task(self, task_id, task_content):
+        """
+        Stores a task so it can be retreived.
+        """
+        pass
+
+    @abc.abstractmethod
+    def retreive_task(self, task_id):
+        """
+        """
+        pass
+
+    @abc.abstractmethod
+    def retreive_any_task(self):
+        """
+        """
+        pass
+
+
+class MemoryTaskStorage(TaskStorage):
+    def __init__(self):
+        self._tasks = dict()
+
+    def store_task(self, task_id, task_content):
+        self._tasks[task_id] = task_content
+
+    def retreive_task(self, task_id):
+        try:
+            ret = self._tasks.pop(task_id)
+        except KeyError:
+            ret = None
+        return ret
+
+    def retreive_any_task(self):
+        try:
+            ret = self._tasks.popitem()
+        except KeyError:
+            ret = None
+        return ret
