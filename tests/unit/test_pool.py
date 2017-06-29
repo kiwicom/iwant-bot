@@ -25,24 +25,24 @@ def test_requests_pool_filters_relevant():
     assert len(active_requests) == 8
 
 
+def test_ignored_pairs():
+    pool = make_filled_request_pool()
+    pool.ignore_list.ignore('christopher', 'olivia')
+    pool.ignore_list.ignore('christopher', 'martin')
+    pool.ignore_list.ignore('christopher', 'andrew')
+    pool.ignore_list.ignore('olivia', 'andrew')
+    pool.ignore_list.ignore('olivia', 'martin')
+    for activity in pool.activity_list:
+        pool.make_pairs(activity)
+    assert len(pool.pairs['picnic']) == 1
+    assert len(pool.pairs['coffee']) == 2
+
+
 def test_pairing_activities():
     pool = make_filled_request_pool()
     for activity in pool.activity_list:
         pool.make_pairs(activity)
     assert len(pool.pairs['picnic']) == 2
-    assert len(pool.pairs['coffee']) == 2
-
-
-def test_ignored_pairs():
-    pool = make_filled_request_pool()
-    pool.users.ignore('christopher', 'olivia')
-    pool.users.ignore('christopher', 'martin')
-    pool.users.ignore('christopher', 'andrew')
-    pool.users.ignore('olivia', 'andrew')
-    pool.users.ignore('olivia', 'martin')
-    for activity in pool.activity_list:
-        pool.make_pairs(activity)
-    assert len(pool.pairs['picnic']) == 1
     assert len(pool.pairs['coffee']) == 2
 
 
