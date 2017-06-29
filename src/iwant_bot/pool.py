@@ -21,7 +21,7 @@ class RequestsPool(object):
         self._time_relevant_requests = set()
         self._blacklisted_requests = set()
         self._time_conflicting_requests = set()
-        self.users = IgnoreList()
+        self.ignore_list = IgnoreList()
 
     def update_requests_from_storage(self):
         activity_requests = self._requests_storage.get_activity_requests()
@@ -33,7 +33,9 @@ class RequestsPool(object):
         self._blacklisted_requests = self._time_conflicting_requests
         self.current_activities_requests = self._time_relevant_requests \
             - self._blacklisted_requests
+        self._update_activity_list()
 
+    def _update_activity_list(self):
         for req in self.current_activities_requests:
             if req.activity not in self.activity_list:
                 self.activity_list.append(req.activity)
@@ -45,14 +47,14 @@ class RequestsPool(object):
                 destination.append(req)
 
     def make_pairs(self, activity):
-        users = self.users
+        ignore_list = self.ignore_list
         source = self.req_by_activities[activity]
         destination = self.pairs[activity]
         if len(source) > 1:
             for request1 in source:
                 source.remove(request1)
                 for request2 in source:
-                    if users.is_ignored(request1.person_id, request2.person_id):
+                    if ignore_list.mutual_ignore_check(request1.person_id, request2.person_id):
                         continue
                     paired = self.pair(request1, request2)
                     source.remove(request2)
@@ -60,24 +62,10 @@ class RequestsPool(object):
                     break
                 source.append(request1)
 
-    async def check_expired(self):
-        pass
-
-    async def coro(self):
-        pass
-
     @staticmethod
     def pair(request1, request2):
         pair = {request1, request2}
         return pair
-
-    @asyncio.coroutine
-    def create_worker(self):
-        return (
-            yield from asyncio.gather(*[
-                self.make_pairs(activity) for activity in self.activity_list
-            ])
-        )
 
     # TODO: There exist intricate strategies that would pick the request
     # that conflict with others most
