@@ -1,12 +1,9 @@
 import asyncio
 from aiohttp import web
-from iwant_bot import db
 import json
 from os import getenv
 from re import match
 from aioslacker import Slacker
-
-DB_ACCESS = None
 
 VERIFICATION = getenv('VERIFICATION')
 if VERIFICATION is None:
@@ -21,27 +18,20 @@ elif not match('xoxb', BOT_TOKEN):
 _commands = ('/iwant', '/iwant1')
 
 
-def add_numbers(a, b):
-    return a + b
-
-
 def format_message(message):
-    return f"'{message.text}' by '{message.nickname}' at {message.when}"
+    return message
 
 
 async def handle(request):
     name = request.rel_url.query.get('name', 'anonymous')
     message = request.rel_url.query.get('msg', '')
-    DB_ACCESS.save_message(message, name)
 
-    messages_we_got_so_far = DB_ACCESS.load_n_last_messages()
     text = ["We recognize the 'name' and 'msg' GET query attributes,"]
     text += ['so you can do http://localhost:8080/?name=me&msg=message']
-    text += ['We got these entries so far:\n']
+    text += [f"Now, we got: '{format_message(message)}' by {name}"]
     text += ['Or you can test POST request by command:']
     text += ['> curl -X POST  --data "user_name=0&channel_id=1&channel_name=2']
     text += ['  team_domain=4&team_id=5&text=6" http://localhost:8080']
-    text.extend([format_message(msg) for msg in messages_we_got_so_far])
     return web.Response(text='\n'.join(text))
 
 
@@ -106,7 +96,6 @@ async def initial_message():
 app = web.Application()
 app.router.add_get('/', handle)
 app.router.add_post('/', handle_post)
-DB_ACCESS = db.DatabaseAccess()
 
 # This sends the initial message to the Slack
 loop = asyncio.get_event_loop()

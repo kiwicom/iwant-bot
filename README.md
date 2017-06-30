@@ -36,7 +36,6 @@ or [ngrok](https://ngrok.com/) to create public adress, which you use in your Sl
 
 * If a problem occurs when generating the image because it was not possible to get some dependencies,
  it means that the `requirements.txt` file needs to be regenerated from `requirements.in`.
-  You will need `pip-compile` tool (which is part of the `pip-tools` PyPi package) to do this.
   See `requirements.txt` for details on how to do it.
 * If the container timezone doesn't match, [override](https://docs.docker.com/compose/extends/#multiple-compose-files) the value of the `timezone` build argument.
 * Localtunnel can have problem with out network (502 bad gateway) and it is not stable, but you can define subdomain like `myslackbot.localtunnel.me`.
