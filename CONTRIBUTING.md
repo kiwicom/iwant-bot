@@ -19,7 +19,8 @@
       - Describe steps to reproduce
       - It would be great if a pull request with possible solution came along with the issue/the report
   - You can create your own [pull request](https://help.github.com/articles/creating-a-pull-request/) on [GitHub].
-
+  - If you are __updating__ or __editing__ already existing documents or __creating__ a new one (.gitignore, README.md, etc.), __always__ _create a pull request_.
+    - If you are updating or creating larger contribution, you can update related documents, but always make sure that you are __created a single commit__ for each of the documents.
 ### Tools integrated in CI and running for every commit
 ---
 - Every commit is automatically tested on [CircleCI] with tox and coala.
@@ -41,7 +42,7 @@
 ### Good Commit Messages
 ---
 Please,
-- Keep commits atomic, it should not describe more than one change.
+- Keep commits atomic, it should __not describe more than one__ change.
 - Use the present tense ("Add feature" not "Added feature").
 - Use the imperative mood ("Move cursor to..." not "Moves cursor to...").
 - Keep the first line short, limit to 50 characters or less.
@@ -59,6 +60,8 @@ Please,
 > adds a feature or enhancement
 >
 >You should add the full URL to the issue e.g. Closes https://github.com/kiwicom/iwant-bot/issues/13
+
+:tada:
 
  [Kiwi.com]: <https://www.kiwi.com>
  [install coala]: <http://docs.coala.io/en/latest/Users/Install.html>
