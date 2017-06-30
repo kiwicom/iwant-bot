@@ -30,6 +30,16 @@ class RequestStorage(abc.ABC):
         """
         pass
 
+    @abc.abstractmethod
+    def remove_activity_request(self, request_id, person_id):
+        """
+        Remove a request from storage
+
+        Raises:
+            KeyError if there is no request of such ID issued by that person.
+        """
+        pass
+
 
 class MemoryRequestsStorage(RequestStorage):
     def __init__(self):
@@ -47,4 +57,65 @@ class MemoryRequestsStorage(RequestStorage):
         if activity is not None:
             ret = [req for req in ret
                    if req.activity == activity]
+        return ret
+
+    def remove_activity_request(self, request_id, person_id):
+        request_to_remove = None
+        for request in self._requests["activity"]:
+            if request.id == request_id and request.person_id == person_id:
+                request_to_remove = request
+                break
+        if request_to_remove is None:
+            exception = KeyError(
+                f"There is no request of ID '{request_id}' by '{person_id}'",
+                request_id, person_id,
+            )
+            raise exception
+        self._requests["activity"].remove(request)
+
+
+class TaskStorage(abc.ABC):
+    @abc.abstractmethod
+    def __init__(self):
+        pass
+
+    @abc.abstractmethod
+    def store_task(self, task_id, task_content):
+        """
+        Stores a task so it can be retreived.
+        """
+        pass
+
+    @abc.abstractmethod
+    def retreive_task(self, task_id):
+        """
+        """
+        pass
+
+    @abc.abstractmethod
+    def retreive_any_task(self):
+        """
+        """
+        pass
+
+
+class MemoryTaskStorage(TaskStorage):
+    def __init__(self):
+        self._tasks = dict()
+
+    def store_task(self, task_id, task_content):
+        self._tasks[task_id] = task_content
+
+    def retreive_task(self, task_id):
+        try:
+            ret = self._tasks.pop(task_id)
+        except KeyError:
+            ret = None
+        return ret
+
+    def retreive_any_task(self):
+        try:
+            ret = self._tasks.popitem()
+        except KeyError:
+            ret = None
         return ret
