@@ -4,6 +4,7 @@ import json
 from os import getenv
 from re import match
 from aioslacker import Slacker
+from iwant_bot.slack_communicator import SlackCommunicator
 
 VERIFICATION = getenv('VERIFICATION')
 if VERIFICATION is None:
@@ -11,9 +12,16 @@ if VERIFICATION is None:
 
 BOT_TOKEN = getenv('BOT_TOKEN')
 if BOT_TOKEN is None:
-    print('Warning: Unknown "Bot User OAuth Access Token".')
+    print('Warning: Unknown BOT_TOKEN "Bot User OAuth Access Token".')
 elif not match('xoxb', BOT_TOKEN):
     print('Warning: "Bot User OAuth Access Token" does not begin with "xoxb".')
+
+SUPER_TOKEN = getenv('SUPER_TOKEN')
+if SUPER_TOKEN is None:
+    print('Warning: Unknown SUPER_TOKEN "OAuth Access Token".')
+elif not match('xoxp', SUPER_TOKEN):
+    print('Warning: "OAuth Access Token" does not begin with "xoxp".')
+
 
 _commands = ('/iwant', '/iwant1')
 
@@ -93,13 +101,40 @@ async def initial_message():
         await slack.chat.post_message('#bot-channel',
                                       'Hi, iwant-bot server was initialized')
 
+
+async def handle_iwant(request):
+    body = body_to_dict(await request.post())
+    print(body)
+    return web.json_response({'text': 'Nothing.'})
+
 app = web.Application()
 app.router.add_get('/', handle)
 app.router.add_post('/', handle_post)
+app.router.add_post('/slack/iwant', handle_iwant)
 
-# This sends the initial message to the Slack
 loop = asyncio.get_event_loop()
-loop.run_until_complete(initial_message())
+
+# Created channel iwant_group10 - id: G65FE8M6K.
+# (1..9 were created and archived, but still cannot be recreate and I cannot delete them.)
+# So, we should not create to many channels?
+
+# test = SlackCommunicator(SUPER_TOKEN, 'U51RKKATS', 'Create channel')
+# loop.run_until_complete(asyncio.gather(test.create_private_channel('iwant_group11'),
+#                                        test.invite_people_in_private_channel())
+#                         )
+
+
+# sent_message_to_each can send message even to channels and users
+# test1 = SlackCommunicator(BOT_TOKEN, 'G64LXGDPC', 'Message 42.')
+# loop.run_until_complete(test1.send_message_to_each())
+
+
+# sent message to multiparty group of max 7 people + 1 iwant-bot. Does not need SUPER_TOKEN.
+# So, this is preferable variant...
+
+test2 = SlackCommunicator(BOT_TOKEN, ['U51RKKATS', 'U52FUHD98', 'U52FU3ZTL'], 'Sorry spam :).')
+loop.run_until_complete(test2.send_message_to_multiparty())
+
 
 if __name__ == '__main__':
     web.run_app(app)
