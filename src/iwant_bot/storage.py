@@ -119,3 +119,56 @@ class MemoryTaskStorage(TaskStorage):
         except KeyError:
             ret = None
         return ret
+
+
+class ResultsStorage(abc.ABC):
+    @abc.abstractmethod
+    def __init__(self):
+        pass
+
+    @abc.abstractmethod
+    def store_result(self, result):
+        """
+        Stores a result so it can be retreived.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_results_concerning_request(self, request_id):
+        """
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_results_past(self, time):
+        pass
+
+
+class MemoryResultsStorage(ResultsStorage):
+    def __init__(self):
+        self._cathegory_storage = collections.defaultdict(list)
+        self._all_results = set()
+
+    def store_result(self, result):
+        """
+        Stores a result so it can be retreived.
+        """
+        for request_id in result.requests_ids:
+            self._cathegory_storage[request_id] = result
+        self._all_results.add(result)
+
+    def get_results_concerning_request(self, request_id):
+        """
+        """
+        return self._cathegory_storage[request_id]
+
+    def get_results_past(self, time):
+        results_past_time = filter(lambda req: req.effective_time > time, list(self._all_results))
+        results_past_time = sorted(results_past_time, key=lambda req: req.effective_time)
+        return results_past_time
+
+    def _pop_result(self, result):
+        for request_id in result.requests_ids:
+            self._cathegory_storage.pop(request_id)
+        self._all_results.discard(result)
+        return result

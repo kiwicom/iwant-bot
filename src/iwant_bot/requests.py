@@ -1,5 +1,6 @@
 import time
 import datetime
+import typing
 
 
 class Request(object):
@@ -41,3 +42,9 @@ class CancellationRequest(Request):
     def __init__(self, person_id, cancelling_request_id):
         super().__init__(person_id)
         self.cancelling_request_id = cancelling_request_id
+
+
+class Result(object):
+    def __init__(self, requests_ids: typing.List[str], effective_time):
+        self.requests_ids = requests_ids
+        self.effective_time = effective_time

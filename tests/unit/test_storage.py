@@ -55,3 +55,16 @@ def test_task_storage():
     assert store.retreive_task("coffee") is None
     store.store_task("covfefe", "tweeted")
     assert store.retreive_any_task() == ("covfefe", "tweeted")
+
+
+def test_results_storage():
+    store = storage.MemoryResultsStorage()
+    late_result = requests.Result(["3"], 2)
+    store.store_result(late_result)
+    early_result = requests.Result(["1", "2"], 1)
+    store.store_result(early_result)
+    returned_result = store.get_results_concerning_request("1")
+    assert early_result == returned_result
+    assert store.get_results_past(1)[0] == late_result
+    assert store.get_results_past(0)[0] == early_result
+    assert store.get_results_past(0)[1] == late_result
