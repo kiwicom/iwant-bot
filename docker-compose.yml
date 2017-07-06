@@ -2,8 +2,12 @@ version: '3'
 services:
   server:
     environment:
+      # slackbot auth
       - BOT_TOKEN
       - VERIFICATION
+      # postgres connection
+      - POSTGRES_PASSWORD
+      - POSTGRES_USER
     build:
       context: .
       args:
@@ -13,3 +17,8 @@ services:
      - .:/app
     ports:
      - "8080:80"
+  postgres:
+    image: "postgres:9"
+    environment:
+      - POSTGRES_PASSWORD
+      - POSTGRES_USER
