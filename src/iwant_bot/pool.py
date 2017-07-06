@@ -1,5 +1,5 @@
-import asyncio
 import collections
+import itertools
 from iwant_bot.ignore import IgnoreList
 
 
@@ -11,8 +11,6 @@ class RequestsPool(object):
     """
 
     def __init__(self, storage):
-        # this is main loop which operates workers
-        self._loop = asyncio.get_event_loop()
         self.activity_list = list()
         self.req_by_activities = collections.defaultdict(list)
         self.pairs = collections.defaultdict(list)
@@ -46,26 +44,36 @@ class RequestsPool(object):
             elif req not in destination:
                 destination.append(req)
 
-    def make_pairs(self, activity):
-        ignore_list = self.ignore_list
-        source = self.req_by_activities[activity]
+    def make_groups(self, activity, group_of=2):
+        requests = set(self.req_by_activities[activity])
         destination = self.pairs[activity]
-        if len(source) > 1:
-            for request1 in source:
-                source.remove(request1)
-                for request2 in source:
-                    if ignore_list.mutual_ignore_check(request1.person_id, request2.person_id):
-                        continue
-                    paired = self.pair(request1, request2)
-                    source.remove(request2)
-                    destination.append(paired)
-                    break
-                source.append(request1)
+        combinations_of_requests = itertools.combinations(requests, group_of)
+        filter_ignored = self._filter_ignored(combinations_of_requests)
+        filter_unique_items = self._filter_uniques(filter_ignored)
+
+        destination += filter_unique_items
+        merged = set(itertools.chain.from_iterable(destination))
+        remaining = requests - merged
+        self.req_by_activities[activity] = remaining
+
+    def _filter_ignored(self, combinations):
+        filtered = [group for group in combinations
+                    if not self.ignore_list.group_ignore_check(group)]
+        return filtered
 
     @staticmethod
-    def pair(request1, request2):
-        pair = {request1, request2}
-        return pair
+    def _filter_uniques(combinations):
+        seen = list()
+        ans = list()
+        for group in combinations:
+            acceptance_sheet = set()
+            for request in group:
+                if request not in seen:
+                    acceptance_sheet.add(request)
+            if len(acceptance_sheet) == len(group):
+                ans.append(group)
+                seen += [req for req in group]
+        return ans
 
     # TODO: There exist intricate strategies that would pick the request
     # that conflict with others most
