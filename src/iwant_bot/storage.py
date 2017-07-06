@@ -1,7 +1,7 @@
 import abc
 import collections
 
-from iwant_bot.requests import IWantRequest
+from iwant_bot import requests
 
 
 class RequestStorage(abc.ABC):
@@ -46,7 +46,7 @@ class MemoryRequestsStorage(RequestStorage):
         self._requests = collections.defaultdict(list)
 
     def store_request(self, request):
-        if isinstance(request, IWantRequest):
+        if isinstance(request, requests.IWantRequest):
             destination = self._requests["activity"]
         else:
             raise ValueError(f"Can't store requests of type {type(request)}.")
