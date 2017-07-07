@@ -60,18 +60,15 @@ class MemoryRequestsStorage(RequestStorage):
         return ret
 
     def remove_activity_request(self, request_id, person_id):
-        request_to_remove = None
-        for request in self._requests["activity"]:
-            if request.id == request_id and request.person_id == person_id:
-                request_to_remove = request
-                break
-        if request_to_remove is None:
-            exception = KeyError(
-                f"There is no request of ID '{request_id}' by '{person_id}'",
-                request_id, person_id,
-            )
-            raise exception
-        self._requests["activity"].remove(request)
+        activity_requests = self._requests["activity"]
+        request_has_right_id = lambda req: req.id == request_id
+        requests_with_right_id = list(filter(request_has_right_id, activity_requests))
+        assert len(requests_with_right_id) == 1, \
+            "There should be exactly one request of such ID to remove"
+        request_to_remove = requests_with_right_id[0]
+        assert request_to_remove.person_id == person_id, \
+            f"The request of the given ID can't be removed by {person_id}"
+        activity_requests.remove(request_to_remove)
 
 
 class TaskStorage(abc.ABC):
