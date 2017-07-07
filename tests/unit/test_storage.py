@@ -1,6 +1,8 @@
+import os
+
 import pytest
 
-from iwant_bot import storage, requests, storage_postgres
+from iwant_bot import storage, requests, storage_sqlalchemy
 
 
 def test_storage_saves_and_restores():
@@ -15,7 +17,12 @@ def test_storage_saves_and_restores():
 
 
 def test_storage_sqlalchemy_saves_and_restores():
-    store = storage_postgres.SqlAlchemyRequestStorage("sqlite:///here.sqlite")
+    # TODO: do this properly as a pytest teardown function. 
+    try:
+        os.remove("here.sqlite")
+    except OSError:
+        pass
+    store = storage_sqlalchemy.SqlAlchemyRequestStorage("sqlite:///here.sqlite")
     request = requests.IWantRequest("john", "coffee", 0)
     request.id = 0
     store.store_request(request)
@@ -33,9 +40,9 @@ def test_storage_removes():
     request = requests.IWantRequest("john", "coffee", 0)
     request.id = "foo"
     store.store_request(request)
-    with pytest.raises(KeyError):
+    with pytest.raises(AssertionError):
         store.remove_activity_request("bar", "jack")
-    with pytest.raises(KeyError):
+    with pytest.raises(AssertionError):
         store.remove_activity_request("foo", "jack")
     store.remove_activity_request("foo", "john")
     assert len(store.get_activity_requests()) == 1

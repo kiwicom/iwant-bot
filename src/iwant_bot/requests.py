@@ -17,6 +17,16 @@ class IWantRequest(Request):
         lifespan = datetime.timedelta(minutes=lifespan_in_minutes)
         self.timeframe_end = self.timeframe_start + lifespan.total_seconds()
 
+    def __eq__(self, rhs):
+        result = True
+        if (
+                self.activity != rhs.activity
+                or self.timeframe_start != rhs.timeframe_start
+                or self.timeframe_end != rhs.timeframe_end
+                ):
+            result = False
+        return result
+
     def is_active_now(self):
         return self.is_active_by(time.time())
 
