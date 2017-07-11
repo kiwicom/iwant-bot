@@ -41,6 +41,8 @@ class RequestStorage(abc.ABC):
         pass
 
 
+# TODO: Remove -> Invalidate
+# store results ID of the result the request is solved by.
 class MemoryRequestsStorage(RequestStorage):
     def __init__(self):
         self._requests = collections.defaultdict(list)
@@ -61,7 +63,8 @@ class MemoryRequestsStorage(RequestStorage):
 
     def remove_activity_request(self, request_id, person_id):
         activity_requests = self._requests["activity"]
-        request_has_right_id = lambda req: req.id == request_id
+
+        def request_has_right_id(req): return req.id == request_id
         requests_with_right_id = list(filter(request_has_right_id, activity_requests))
         assert len(requests_with_right_id) == 1, \
             "There should be exactly one request of such ID to remove"
@@ -71,7 +74,7 @@ class MemoryRequestsStorage(RequestStorage):
         activity_requests.remove(request_to_remove)
 
 
-class TaskStorage(abc.ABC):
+class TaskQueue(abc.ABC):
     @abc.abstractmethod
     def __init__(self):
         pass
@@ -84,31 +87,27 @@ class TaskStorage(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def retreive_task(self, task_id):
+    def retreive_task(self):
         """
         """
         pass
 
     @abc.abstractmethod
-    def retreive_any_task(self):
+    def task_is_solved(self, task_id):
         """
         """
         pass
 
 
-class MemoryTaskStorage(TaskStorage):
+class MemoryTaskQueue(TaskQueue):
     def __init__(self):
         self._tasks = dict()
 
     def store_task(self, task_id, task_content):
         self._tasks[task_id] = task_content
 
-    def retreive_task(self, task_id):
-        try:
-            ret = self._tasks.pop(task_id)
-        except KeyError:
-            ret = None
-        return ret
+    def task_is_solved(self, task_id):
+        pass
 
     def retreive_any_task(self):
         try:
@@ -160,7 +159,8 @@ class MemoryResultsStorage(ResultsStorage):
         return self._cathegory_storage[request_id]
 
     def get_results_past(self, time):
-        results_past_time = filter(lambda req: req.effective_time > time, list(self._all_results))
+        def request_is_effective(req): return req.effective_time > time
+        results_past_time = filter(request_is_effective, list(self._all_results))
         results_past_time = sorted(results_past_time, key=lambda req: req.effective_time)
         return results_past_time
 

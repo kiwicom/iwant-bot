@@ -9,6 +9,7 @@ class Request(object):
         self.id = request_id
 
 
+# TODO: Add the activity start + request deadline data (+ activity duration?)
 class IWantRequest(Request):
     def __init__(self, person_id, activity, lifespan_in_minutes):
         super().__init__(person_id)
@@ -16,6 +17,7 @@ class IWantRequest(Request):
         self.timeframe_start = time.time()
         lifespan = datetime.timedelta(minutes=lifespan_in_minutes)
         self.timeframe_end = self.timeframe_start + lifespan.total_seconds()
+        self.resolved_by = None
 
     def __eq__(self, rhs):
         result = True
