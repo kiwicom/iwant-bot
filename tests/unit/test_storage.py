@@ -65,15 +65,14 @@ def test_storage_filters_activities():
     assert len(recovered_coffee_requests) == 3
 
 
-def test_task_storage():
-    store = storage.MemoryTaskStorage()
-    store.store_task("coffee", "added")
-    store.store_task("coffee", "cancelled")
-    task = store.retreive_task("coffee")
-    assert task == "cancelled"
-    assert store.retreive_task("coffee") is None
-    store.store_task("covfefe", "tweeted")
-    assert store.retreive_any_task() == ("covfefe", "tweeted")
+def test_task_queue():
+    store = storage.MemoryTaskQueue()
+    store.store_task("coffee-added")
+    store.store_task("coffee-cancelled")
+    task = store.retreive_task()
+    assert task == "coffee-cancelled"
+    store.store_task("covfefe-tweeted")
+    assert store.retreive_task() == ("covfefe-tweeted")
 
 
 def test_results_storage():

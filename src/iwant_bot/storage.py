@@ -1,5 +1,6 @@
 import abc
 import collections
+import queue
 
 from iwant_bot import requests
 
@@ -101,20 +102,16 @@ class TaskQueue(abc.ABC):
 
 class MemoryTaskQueue(TaskQueue):
     def __init__(self):
-        self._tasks = dict()
+        self._tasks = queue.LifoQueue()
 
-    def store_task(self, task_id, task_content):
-        self._tasks[task_id] = task_content
+    def store_task(self, task):
+        self._tasks.put(task)
 
     def task_is_solved(self, task_id):
         pass
 
-    def retreive_any_task(self):
-        try:
-            ret = self._tasks.popitem()
-        except KeyError:
-            ret = None
-        return ret
+    def retreive_task(self):
+        return self._tasks.get()
 
 
 class ResultsStorage(abc.ABC):
