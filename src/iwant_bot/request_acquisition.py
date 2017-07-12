@@ -96,7 +96,7 @@ class Canceller(AbstractBlock):
         try:
             self._storage.remove_activity_request(request.cancelling_request_id, request.person_id)
             request.cancellation_succeeded = True
-        except KeyError:
+        except AssertionError:
             # Request was not cancelled, but in case of a KeyError,
             # it is not a big deal
             pass

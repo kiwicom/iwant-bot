@@ -19,6 +19,9 @@ class IWantRequest(Request):
         self.timeframe_end = self.timeframe_start + lifespan.total_seconds()
         self.resolved_by = None
 
+    def __hash__(self):
+        return hash((self.activity, self.timeframe_start, self.timeframe_end))
+
     def __eq__(self, rhs):
         result = True
         if (

@@ -1,6 +1,7 @@
 import abc
 import collections
 import queue
+import logging
 
 from iwant_bot import requests
 
