@@ -2,7 +2,7 @@ import abc
 from contextlib import contextmanager
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float
+from sqlalchemy import Column, Integer, String, ForeignKey, Float
 
 from . import requests
 from . import storage
@@ -80,7 +80,10 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
     def get_activity_requests(self, activity=None):
         result = []
         with self.session_scope() as session:
-            query_results = session.query(Request, IWantRequest).filter(Request.id == IWantRequest.id)
+            query_results = (
+                session.query(Request, IWantRequest)
+                .filter(Request.id == IWantRequest.id)
+            )
             if activity is not None:
                 query_results = query_results.filter(
                     IWantRequest.activity == activity)

@@ -17,7 +17,7 @@ def test_storage_saves_and_restores():
 
 
 def test_storage_sqlalchemy_saves_and_restores():
-    # TODO: do this properly as a pytest teardown function. 
+    # TODO: do this properly as a pytest teardown function.
     try:
         os.remove("here.sqlite")
     except OSError:
