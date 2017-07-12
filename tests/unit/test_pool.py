@@ -80,7 +80,7 @@ def test_number_of_activities():
     pool = make_filled_request_pool()
     storage = pool._requests_storage
     assert len(pool.activity_list) == 2
-    storage.store_request(requests.IWantRequest("jack", "running", 45))
+    storage.store_request(requests.IWantRequest("jack", "running", NOW + 450, 0, 0))
     pool.update_requests_from_storage()
     assert len(pool.activity_list) == 3
 
