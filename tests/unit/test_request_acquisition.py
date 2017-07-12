@@ -56,7 +56,7 @@ def add_not_cancelled_requests_notifier(pipeline, list_container):
 def test_notifier(pipeline):
     requests = []
     add_notifier(pipeline, requests)
-    pipeline.add_activity_request('john', 'coffee', 5)
+    pipeline.add_activity_request('john', 'coffee', 5, 0, 0)
     assert len(requests) == 1
     assert requests[0].person_id == 'john'
 
@@ -66,7 +66,7 @@ def test_breaker(pipeline):
     add_noop(pipeline)
     add_breaker(pipeline)
     add_notifier(pipeline, requests)
-    pipeline.add_activity_request('john', 'coffee', 5)
+    pipeline.add_activity_request('john', 'coffee', 5, 0, 0)
     assert len(requests) == 0
 
 
@@ -74,15 +74,15 @@ def test_uid_assigner(pipeline):
     requests = []
     add_uid_assigner(pipeline)
     add_notifier(pipeline, requests)
-    pipeline.add_activity_request('john', 'coffee', 5)
-    pipeline.add_activity_request('john', 'coffee', 5)
+    pipeline.add_activity_request('john', 'coffee', 5, 0, 0)
+    pipeline.add_activity_request('john', 'coffee', 5, 0, 0)
     assert requests[0].id != requests[1].id
 
 
 def test_saver(pipeline):
     req_storage = storage.MemoryRequestsStorage()
     add_requests_saver(pipeline, req_storage)
-    pipeline.add_activity_request('john', 'coffee', 5)
+    pipeline.add_activity_request('john', 'coffee', 5, 0, 0)
     assert req_storage.get_activity_requests()[0].person_id == 'john'
 
 
@@ -99,7 +99,7 @@ def test_canceller(pipeline):
     requests_not_cancelled = []
     add_not_cancelled_requests_notifier(pipeline, requests_not_cancelled)
 
-    pipeline.add_activity_request('john', 'coffee', 5)
+    pipeline.add_activity_request('john', 'coffee', 5, 0, 0)
     assert len(req_storage.get_activity_requests()) == 1
 
     id_to_cancel = req_storage.get_activity_requests()[0].id

@@ -44,15 +44,16 @@ class IWantRequest(RequestsBase):
 
     id = Column(Integer, ForeignKey("requests.id"),
                 autoincrement=True, primary_key=True)
-    timeframe_start = Column(Float, nullable=False)
-    timeframe_end = Column(Float, nullable=False)
+    deadline = Column(Float, nullable=False)
+    activity_start = Column(Float, nullable=False)
+    activity_duration = Column(Float, nullable=False)
     activity = Column(String, nullable=False)
 
     def toIWantRequest(self, person_id=None):
-        result = requests.IWantRequest(person_id, self.activity, 0)
+        result = requests.IWantRequest(
+            person_id, self.activity, self.deadline,
+            self.activity_start, self.activity_duration)
         result.id = self.id
-        result.timeframe_start = self.timeframe_start
-        result.timeframe_end = self.timeframe_end
         return result
 
 
@@ -71,8 +72,8 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
             request_base_to_add = Request(
                 id=request.id, person_id=request.person_id)
             request_to_add = IWantRequest(
-                id=request.id, timeframe_start=request.timeframe_start,
-                timeframe_end=request.timeframe_end, activity=request.activity)
+                id=request.id, deadline=request.deadline, activity=request.activity,
+                activity_start=request.activity_start, activity_duration=request.activity_duration)
             session.add(request_base_to_add)
             session.add(request_to_add)
 

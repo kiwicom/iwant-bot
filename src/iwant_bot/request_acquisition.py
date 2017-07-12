@@ -12,8 +12,11 @@ class RequestPreprocessingPipeline(object):
     def add_block(self, request_type, block):
         self._blocks[request_type].append(block)
 
-    def add_activity_request(self, person_id, activity, lifespan_in_minutes):
-        chained_request = requests.IWantRequest(person_id, activity, lifespan_in_minutes)
+    def add_activity_request(
+            self, person_id, activity, deadline,
+            activity_start, activity_end):
+        chained_request = requests.IWantRequest(
+            person_id, activity, deadline, activity_start, activity_end)
         for block in self._blocks['activity']:
             if chained_request is None:
                 break
