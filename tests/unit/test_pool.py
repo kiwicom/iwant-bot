@@ -8,8 +8,21 @@ def make_filled_request_pool():
     storage.store_request(requests.IWantRequest("john", "coffee", 5))
     storage.store_request(requests.IWantRequest("jane", "coffee", 5))
     storage.store_request(requests.IWantRequest("oliver", "coffee", 5))
+    storage.store_request(requests.IWantRequest("tyler", "coffee", 7))
+    storage.store_request(requests.IWantRequest("carolina", "coffee", 7))
+    storage.store_request(requests.IWantRequest("emilia", "coffee", 7))
+    storage.store_request(requests.IWantRequest("josh", "coffee", 7))
+    storage.store_request(requests.IWantRequest("alex", "coffee", 7))
+    storage.store_request(requests.IWantRequest("bryan", "coffee", 7))
+    storage.store_request(requests.IWantRequest("kate", "coffee", 7))
+    storage.store_request(requests.IWantRequest("morgan", "coffee", 7))
+    storage.store_request(requests.IWantRequest("celine", "coffee", 7))
+    storage.store_request(requests.IWantRequest("trevor", "coffee", 7))
+    storage.store_request(requests.IWantRequest("michael", "coffee", 7))
+    storage.store_request(requests.IWantRequest("franklin", "coffee", 7))
     storage.store_request(requests.IWantRequest("peter", "coffee", 7))
     storage.store_request(requests.IWantRequest("olivia", "picnic", 5))
+    storage.store_request(requests.IWantRequest("andrew", "picnic", 5))
     storage.store_request(requests.IWantRequest("martin", "picnic", 7))
     storage.store_request(requests.IWantRequest("christopher", "picnic", 10))
     storage.store_request(requests.IWantRequest("jerry", "coffee", 0))
@@ -21,20 +34,50 @@ def make_filled_request_pool():
 def test_requests_pool_filters_relevant():
     pool = make_filled_request_pool()
     active_requests = pool.current_activities_requests
-    assert len(active_requests) == 7
+    assert len(active_requests) == 20
+
+
+def test_ignored_pairs():
+    pool = make_filled_request_pool()
+    pool.ignore_list.ignore('christopher', 'olivia')
+    pool.ignore_list.ignore('christopher', 'martin')
+    pool.ignore_list.ignore('christopher', 'andrew')
+    pool.ignore_list.ignore('olivia', 'andrew')
+    pool.ignore_list.ignore('olivia', 'martin')
+    for activity in pool.activity_list:
+        pool.make_groups(activity)
+    assert len(pool.pairs['picnic']) == 1
+    assert len(pool.pairs['coffee']) == 8
+
+
+def test_ignored_groups_of_7():
+    pool = make_filled_request_pool()
+    pool.ignore_list.ignore('christopher', 'olivia')
+    pool.ignore_list.ignore('christopher', 'martin')
+    pool.ignore_list.ignore('christopher', 'andrew')
+    pool.ignore_list.ignore('olivia', 'andrew')
+    pool.ignore_list.ignore('olivia', 'martin')
+    for activity in pool.activity_list:
+        pool.make_groups(activity, 7)
+    assert len(pool.pairs['picnic']) == 0
+    assert len(pool.pairs['coffee']) == 2
 
 
 def test_pairing_activities():
     pool = make_filled_request_pool()
     for activity in pool.activity_list:
-        pool.make_pairs(activity)
-    assert len(pool.pairs['picnic']) == 1
-    assert len(pool.pairs['coffee']) == 2
+        pool.make_groups(activity)
+    assert len(pool.pairs['picnic']) == 2
+    assert len(pool.pairs['coffee']) == 8
 
 
 def test_number_of_activities():
     pool = make_filled_request_pool()
+    storage = pool._requests_storage
     assert len(pool.activity_list) == 2
+    storage.store_request(requests.IWantRequest("jack", "running", 45))
+    pool.update_requests_from_storage()
+    assert len(pool.activity_list) == 3
 
 
 def test_pool_ignores_duplicates():
@@ -44,4 +87,4 @@ def test_pool_ignores_duplicates():
     storage.store_request(requests.IWantRequest("james", "coffee", 5))
     pool.update_requests_from_storage()
     active_requests = pool.current_activities_requests
-    assert len(active_requests) == 8
+    assert len(active_requests) == 21
