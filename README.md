@@ -1,4 +1,7 @@
 # iwant-bot
+
+[![Documentation Status](https://readthedocs.org/projects/iwantbot/badge/?version=latest)](http://iwantbot.readthedocs.io/en/latest/?badge=latest)
+
 Slackbot project implemented by [Kiwi.com](Kiwi.com) interns.
 
 The bot is supposed to collect requests of users, and notify those who have common requests and can therefore socially interact. So, for example, if Mary tells the bot at 9:00 that she wants to take a coffee break half-hour from now and Jack tells the bot the same at 9:10, the bot will notify them at some point that they can have the coffee together.
