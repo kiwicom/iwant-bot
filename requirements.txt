@@ -6,13 +6,20 @@
 #
 aiohttp==2.1.0
 aioslacker==0.0.6
+amqp==2.2.1               # via kombu
 async-timeout==1.2.1      # via aiohttp
+billiard==3.5.0.3         # via celery
+celery[redis]==4.0.2
 certifi==2017.4.17        # via requests
 chardet==3.0.3            # via aiohttp, requests
 idna==2.5                 # via requests
+kombu==4.0.2              # via celery
 multidict==2.1.6          # via aiohttp, yarl
+pytz==2017.2              # via celery
+redis==2.10.5             # via celery
 requests==2.17.3          # via slacker
 slacker==0.9.42           # via aioslacker
 sqlalchemy==1.1.10
 urllib3==1.21.1           # via requests
+vine==1.1.4               # via amqp
 yarl==0.10.2              # via aiohttp
