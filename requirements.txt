@@ -11,6 +11,7 @@ certifi==2017.4.17        # via requests
 chardet==3.0.3            # via aiohttp, requests
 idna==2.5                 # via requests
 multidict==2.1.6          # via aiohttp, yarl
+psycopg2==2.7.1
 requests==2.17.3          # via slacker
 slacker==0.9.42           # via aioslacker
 sqlalchemy==1.1.10

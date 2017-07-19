@@ -5,9 +5,15 @@ import pytest
 from iwant_bot import storage, requests, storage_sqlalchemy
 
 
-def test_storage_saves_and_restores():
+def test_memory_storage_saves_and_restores():
     store = storage.MemoryRequestsStorage()
+    storage_saves_and_restores(store)
+
+
+def storage_saves_and_restores(store):
+    store.wipe_database()
     request = requests.IWantRequest("john", "coffee", 0, 0, 0)
+    request.id = "an ID"
     store.store_request(request)
     recovered_request = store.get_activity_requests()[0]
     assert request == recovered_request
@@ -16,21 +22,17 @@ def test_storage_saves_and_restores():
     assert "int" in str(err)
 
 
-def test_storage_sqlalchemy_saves_and_restores():
-    # TODO: do this properly as a pytest teardown function.
-    try:
-        os.remove("here.sqlite")
-    except OSError:
-        pass
+def test_storage_sqlite_saves_and_restores():
     store = storage_sqlalchemy.SqlAlchemyRequestStorage("sqlite:///here.sqlite")
-    request = requests.IWantRequest("john", "coffee", 0, 0, 0)
-    request.id = 0
-    store.store_request(request)
-    recovered_request = store.get_activity_requests()[0]
-    assert request == recovered_request
-    with pytest.raises(ValueError) as err:
-        store.store_request(42)
-    assert "int" in str(err)
+    storage_saves_and_restores(store)
+
+
+def test_storage_postgres_saves_and_restores():
+    # TODO: do this properly as a pytest teardown function.
+    username = os.environ["POSTGRES_USER"]
+    password = os.environ["POSTGRES_PASSWORD"]
+    store = storage_sqlalchemy.SqlAlchemyRequestStorage(f"postgresql+psycopg2://{username}:{password}@postgres/{username}")
+    storage_saves_and_restores(store)
 
 
 def test_storage_removes():

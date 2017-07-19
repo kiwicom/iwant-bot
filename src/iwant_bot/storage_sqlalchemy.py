@@ -13,8 +13,13 @@ RequestsBase = declarative_base()
 class SQLAlchemyStorage(abc.ABC):
     def __init__(self, sqlalchemy_connection_string, base):
         from sqlalchemy import create_engine
+        self.declarative_base = base
         self.engine = create_engine(sqlalchemy_connection_string)
-        base.metadata.create_all(self.engine)
+        self.declarative_base.metadata.create_all(self.engine)
+
+    def wipe_database(self):
+        self.declarative_base.metadata.drop_all(self.engine)
+        self.declarative_base.metadata.create_all(self.engine)
 
     # taken from:  http://docs.sqlalchemy.org/en/latest/orm/session_basics.html
     @contextmanager
@@ -42,8 +47,8 @@ class Request(RequestsBase):
 class IWantRequest(RequestsBase):
     __tablename__ = 'iwantrequests'
 
-    id = Column(Integer, ForeignKey("requests.id"),
-                autoincrement=True, primary_key=True)
+    id = Column(String, ForeignKey("requests.id"),
+                primary_key=True)
     deadline = Column(Float, nullable=False)
     activity_start = Column(Float, nullable=False)
     activity_duration = Column(Float, nullable=False)
@@ -68,13 +73,17 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
             raise ValueError(f"Can't store requests of type {type(request)}.")
 
     def _store_activity_request(self, request):
+        # Adding request and request_base during one session sometimes fails on foreign key
+        # integrity error, sometimes it passes.
         with self.session_scope() as session:
             request_base_to_add = Request(
                 id=request.id, person_id=request.person_id)
+            session.add(request_base_to_add)
+
+        with self.session_scope() as session:
             request_to_add = IWantRequest(
                 id=request.id, deadline=request.deadline, activity=request.activity,
                 activity_start=request.activity_start, activity_duration=request.activity_duration)
-            session.add(request_base_to_add)
             session.add(request_to_add)
 
     def get_activity_requests(self, activity=None):

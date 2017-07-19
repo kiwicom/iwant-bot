@@ -41,6 +41,10 @@ class RequestStorage(abc.ABC):
         """
         pass
 
+    @abc.abstractmethod
+    def wipe_database(self):
+        pass
+
 
 # TODO: Remove -> Invalidate
 # store results ID of the result the request is solved by.
@@ -73,6 +77,9 @@ class MemoryRequestsStorage(RequestStorage):
         assert request_to_remove.person_id == person_id, \
             f"The request of the given ID can't be removed by {person_id}"
         activity_requests.remove(request_to_remove)
+
+    def wipe_database(self):
+        pass
 
 
 class TaskQueue(abc.ABC):
