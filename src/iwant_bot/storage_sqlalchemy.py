@@ -2,7 +2,7 @@ import abc
 from contextlib import contextmanager
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, ForeignKey, Float
+from sqlalchemy import Column, String, ForeignKey, Float
 
 from . import requests
 from . import storage
