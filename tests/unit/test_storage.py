@@ -27,11 +27,14 @@ def test_storage_sqlite_saves_and_restores():
     storage_saves_and_restores(store)
 
 
+@pytest.mark.skipif("POSTGRES_USER" not in os.environ,
+                    reason="Postgres container connection is not configured correctly")
 def test_storage_postgres_saves_and_restores():
     # TODO: do this properly as a pytest teardown function.
     username = os.environ["POSTGRES_USER"]
     password = os.environ["POSTGRES_PASSWORD"]
-    store = storage_sqlalchemy.SqlAlchemyRequestStorage(f"postgresql+psycopg2://{username}:{password}@postgres/{username}")
+    store = storage_sqlalchemy.SqlAlchemyRequestStorage(
+        f"postgresql+psycopg2://{username}:{password}@postgres/{username}")
     storage_saves_and_restores(store)
 
 
