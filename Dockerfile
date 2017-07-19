@@ -1,17 +1,12 @@
-FROM python:3.6-alpine
+FROM python:3.6-slim
 
 COPY requirements.txt app/
 
-RUN pip install gunicorn \
-	&& pip install -r /app/requirements.txt
+RUN pip install gunicorn pytest && pip install -r /app/requirements.txt
 
 ARG timezone
 
-# This RUN operation is trivial in comparison with download of Python dependencies, so it has its own RUN section.
-RUN apk add --update tzdata \
-	&& ln -snf "/usr/share/zoneinfo/$timezone" /etc/localtime \
-	&& echo $timezone > /etc/timezone \
-	&& rm -rf /var/cache/apk/*
+RUN ln -snf /usr/share/zoneinfo/$timezone /etc/localtime && echo $timezone > /etc/timezone
 
 WORKDIR /app/src
 
