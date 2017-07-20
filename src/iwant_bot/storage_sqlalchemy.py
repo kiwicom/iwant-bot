@@ -100,4 +100,8 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
         return result
 
     def remove_activity_request(self, request_id, person_id):
-        pass
+        with self.session_scope() as session:
+            query_results = (
+                session.query(Request, IWantRequest)
+                .filter(Request.id == IWantRequest.id)
+            )
