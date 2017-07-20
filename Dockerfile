@@ -2,7 +2,13 @@ FROM python:3.6-slim
 
 COPY requirements.txt app/
 
-RUN pip install gunicorn pytest && pip install -r /app/requirements.txt
+RUN pip install gunicorn pytest
+
+RUN apt-get update \
+	&& DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends gcc build-essential \
+	&& pip install -r /app/requirements.txt \
+	&& DEBIAN_FRONTEND=noninteractive apt-get uninstall -y gcc \
+	&& rm -rf /var/lib/apt/lists
 
 ARG timezone
 
