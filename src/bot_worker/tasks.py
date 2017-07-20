@@ -11,6 +11,7 @@ def longtime_add(x, y):
     print('long time task finished')
     return x + y
 
+
 for _ in range(3):
     result = longtime_add.delay(1, 2)
     print(f"Task finished? {result.ready()}")

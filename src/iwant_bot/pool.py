@@ -3,6 +3,7 @@ import itertools
 from iwant_bot.ignore import IgnoreList
 from bot_worker.celery import worker
 
+
 class RequestsPool(object):
     """
     This class is a layer between the storage layer and higher-level
