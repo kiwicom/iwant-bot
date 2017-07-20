@@ -2,7 +2,7 @@ import abc
 import uuid
 import collections
 
-from iwant_bot import requests
+from . import requests
 
 
 class RequestPreprocessingPipeline(object):
