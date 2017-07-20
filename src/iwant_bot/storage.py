@@ -49,11 +49,11 @@ class RequestStorage(abc.ABC):
     def resolve_requests(self, requests):
         pass
 
-    @abc.abstractmethod
+    # @abc.abstractmethod
     def get_requests_near_expiring(self, time_interval):
         pass
 
-    @abc.abstractmethod
+    # @abc.abstractmethod
     def get_requests_of_result(self, result_id):
         pass
 

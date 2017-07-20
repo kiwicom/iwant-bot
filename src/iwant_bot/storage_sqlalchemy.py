@@ -41,13 +41,11 @@ class SQLAlchemyStorage(abc.ABC):
 class Request(RequestsBase):
     __tablename__ = 'requests'
 
-    activity_requests = relationship("IWantRequest", cascade="delete")
-
     id = Column(String, nullable=False, primary_key=True, unique=True)
     person_id = Column(String, nullable=False)
 
 
-class IWantRequest(RequestsBase):
+class IWantRequest(Request):
     __tablename__ = 'iwantrequests'
 
     id = Column(String, ForeignKey("requests.id"),
@@ -87,16 +85,9 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
             raise ValueError(f"Can't store requests of type {type(request)}.")
 
     def _store_activity_request(self, request):
-        # Adding request and request_base during one session sometimes fails on foreign key
-        # integrity error, sometimes it passes.
-        with self.session_scope() as session:
-            request_base_to_add = Request(
-                id=request.id, person_id=request.person_id)
-            session.add(request_base_to_add)
-
         with self.session_scope() as session:
             request_to_add = IWantRequest(
-                id=request.id, deadline=request.deadline, activity=request.activity,
+                id=request.id, person_id=request.person_id, deadline=request.deadline, activity=request.activity,
                 activity_start=request.activity_start, activity_duration=request.activity_duration)
             session.add(request_to_add)
 
@@ -117,8 +108,8 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
     def remove_activity_request(self, request_id, person_id):
         with self.session_scope() as session:
             query_results = (
-                session.query(Request)
-                .filter(Request.id == request_id, Request.person_id == person_id)
+                session.query(IWantRequest)
+                .filter(IWantRequest.id == request_id, IWantRequest.person_id == person_id)
             )
             all_results = query_results.all()
             assert len(all_results) == 1
@@ -140,6 +131,16 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
                 resolved_by = self._create_result()
             for record in all_results:
                 record.resolved_by = resolved_by
+
+    def get_requests_of_result(self, result_id):
+        with self.session_scope() as session:
+            query_results = (
+                session.query(IWantRequest)
+                .filter(IWantRequest.resolved_by == result_id)
+            )
+            result = [record.toIWantRequest(record.person_id)
+                      for record in query_results.all()]
+        return result
 
     def _create_result(self):
         # The context manager doesn't work for some reason
