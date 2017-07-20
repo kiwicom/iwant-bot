@@ -1,10 +1,11 @@
 import asyncio
 from aiohttp import web
-import json
 from os import getenv
-from re import match
-from aioslacker import Slacker
+import re
+import time
 from iwant_bot.slack_communicator import SlackCommunicator
+from iwant_bot.iwant_parser import IwantParser
+
 
 VERIFICATION = getenv('VERIFICATION')
 if VERIFICATION is None:
@@ -13,104 +14,128 @@ if VERIFICATION is None:
 BOT_TOKEN = getenv('BOT_TOKEN')
 if BOT_TOKEN is None:
     print('Warning: Unknown BOT_TOKEN "Bot User OAuth Access Token".')
-elif not match('xoxb', BOT_TOKEN):
+elif not re.match('xoxb', BOT_TOKEN):
     print('Warning: "Bot User OAuth Access Token" does not begin with "xoxb".')
 
 SUPER_TOKEN = getenv('SUPER_TOKEN')
 if SUPER_TOKEN is None:
     print('Warning: Unknown SUPER_TOKEN "OAuth Access Token".')
-elif not match('xoxp', SUPER_TOKEN):
+elif not re.match('xoxp', SUPER_TOKEN):
     print('Warning: "OAuth Access Token" does not begin with "xoxp".')
 
 
-_commands = ('/iwant', '/iwant1')
+_commands = ('/iwant', )
+_iwant_activities = ('coffee', )
+_iwant_behest = ('list', 'subscribe', 'unsubscribe')
 
 
-def format_message(message):
-    return message
+class TokenError(Exception):
+    pass
 
 
-async def handle(request):
-    name = request.rel_url.query.get('name', 'anonymous')
-    message = request.rel_url.query.get('msg', '')
-
-    text = ["We recognize the 'name' and 'msg' GET query attributes,"]
-    text += ['so you can do http://localhost:8080/?name=me&msg=message']
-    text += [f"Now, we got: '{format_message(message)}' by {name}"]
-    text += ['Or you can test POST request by command:']
-    text += ['> curl -X POST  --data "user_name=0&channel_id=1&channel_name=2']
-    text += ['  team_domain=4&team_id=5&text=6" http://localhost:8080']
-    return web.Response(text='\n'.join(text))
+async def handle_get(request):
+    """Handle GET request, can be display at http://localhost:8080"""
+    text = (f'Server is running at {request.url}.\n'
+            f'Try `curl -X POST --data "text=test" {request.url}example`\n')
+    return web.Response(text=text)
 
 
-def format_response(message='No response.'):
-    return json.dumps({'text': message})
+async def handle_other_posts(request):
+    """Handle all other POST requests.
+    For testing purpose, `curl -X POST --data "text=test" http://localhost:8080/example`"""
+    body = multidict_to_dict(await request.post())
+    print(body)
+    print(request.match_info['post'])
+    return web.json_response({'text': f"POST to /{request.match_info['post']} is not resolved."})
 
 
-def verify_post_request(token):
-    """Slack `/commands` carry token, which must be same as VERIFICATION"""
-    return token == VERIFICATION
+def multidict_to_dict(multidict) -> dict:
+    if not len(set(multidict.keys())) == len(multidict):
+        print('WARNING: MultiDict contains duplicate keys, last occurrence was used.')
+        print(multidict)
+    return {key: multidict[key] for key in multidict}
 
 
-def body_to_dict(body):
-    """Try to convert MultiDictProxy to dictionary.
-    Not handled ValueError"""
-    keys = set(body.keys())
-    if len(keys) == len(body):
-        body_dict = {}
-        for key in keys:
-            body_dict[key] = body[key]
-    else:
-        raise ValueError('MultiDict contains same keys.')
-    return body_dict
-
-
-def trigger_reaction(body, trigger):
-    """Commands: /iwant,
-    Trigger_words: None"""
-    message = format_response(
-        f"{body['user_name']} used {body[trigger]} with {body['text']}.")
-    return web.json_response(body=message)
-
-
-async def handle_post(request):
-    body = body_to_dict(await request.post())
+async def handle_slack_iwant(request):
+    body = multidict_to_dict(await request.post())
+    body['incoming_ts'] = time.time()
     print(body)
 
-    if verify_post_request(body['token']):  # error if not 'token'
-        """Separation of cases like /iwant commands, responses, etc."""
+    try:
+        verify_request_token(body)
+    except (KeyError, TokenError) as err:
+        print(f'INFO: Invalid token: {err}')
+        return web.json_response({'text': 'Unverified message.'})
 
-        triggers = ['command', 'trigger_word']  # stops with the first match
-        for key in triggers:
-            if key in body:
-                return trigger_reaction(body, key)
-            else:
-                print(f'{key} not found.')
+    if 'command' in body:
+        if body['command'] == '/iwant':
+            iwant_object = IwantParser(body, _iwant_activities, _iwant_behest)
         else:
-            message = format_response(f"I don't get it, try {_commands}.")
+            print(f"WARNING: iwant handler handles command '{body['command']}'")
+            return web.json_response({'text': 'Something went wrong.'})
     else:
-        message = format_response('Bad token, we do not listen to you!')
+        print("WARNING: Request does not specify 'command'.")
+        return web.json_response({'text': 'Something went wrong.'})
 
-    return web.json_response(body=message)
+    print(iwant_object.data)
+
+    # Check and process the behests
+    if len(iwant_object.data['behests']) > 1:
+        return web.json_response({'text': "You can use only one at the same time from:\n"
+                                          f" {', '.join(_iwant_behest)}"})
+    elif len(iwant_object.data['behests']) == 1:
+        # list
+        if iwant_object.data['behests'][0] == 'list':
+            return web.json_response(iwant_object.return_list_of_parameters())
+        # other behests
+        else:
+            return web.json_response({'text': f"{iwant_object.data['behests'][0]}"
+                                              " is not implemented yet. Coming soon!"})
+
+    # If no behest, then check and process the activities
+    if len(iwant_object.data['activities']) == 0:
+        return web.json_response(iwant_help_message())
+    elif len(iwant_object.data['activities']) > 0:
+        # send to the logic and storage:
+        if iwant_object.create_iwant_task():    # produce callback_id
+            return web.json_response(iwant_object.create_accepted_response())
+        else:
+            print('WARNING: Something went wrong between the storage and server.')
+            return web.json_response({'text': 'Server problem. Please, try it again.'})
+
+    # If no condition were met, than something is not implemented.
+    print('WARNING: /iwant command did nothing.')
+    return web.json_response({'text': 'Nothing happened.'})
 
 
-async def initial_message():
-    """ This sends message to the Slack. The message need to carry
-    the token BOT_TOKEN for verification by Slack."""
-    async with Slacker(BOT_TOKEN) as slack:
-        await slack.chat.post_message('#bot-channel',
-                                      'Hi, iwant-bot server was initialized')
+def verify_request_token(body: dict) -> None:
+    """Raise KeyError, if body does not have any key 'token'.
+    Raise TokenError, if token does not match."""
+    if not body['token'] == VERIFICATION:
+        raise TokenError(f"Token {body['token']} is not valid.")
 
 
-async def handle_iwant(request):
-    body = body_to_dict(await request.post())
-    print(body)
-    return web.json_response({'text': 'Nothing.'})
+def iwant_help_message() -> dict:
+    """Create help message for /iwant command.
+    Called by empty command "/iwant" or when no activity is recognized."""
+    text = ('This is `/iwant` help.\n'
+            'Use `/iwant activity` to let me know, what you want to do.'
+            ' I will find someone, who will join you!\n'
+            'You can get the list of available activities by `\iwant list`.\n'
+            'Some examples:\n'
+            '  `/iwant coffee`\n'
+            '  `/iwant coffee in 35 min with @alex`'
+            ' (I will notify @alex, but everyone can join.)\n'
+            'Also, you can be always informed about some activity:\n'
+            '`\iwant (un)subscribe table_football`'
+            )
+    return {'text': text}
+
 
 app = web.Application()
-app.router.add_get('/', handle)
-app.router.add_post('/', handle_post)
-app.router.add_post('/slack/iwant', handle_iwant)
+app.router.add_get(r'/{get:\w*}', handle_get)
+app.router.add_post('/slack/iwant', handle_slack_iwant)
+app.router.add_post(r'/{post:[\w/]*}', handle_other_posts)
 
 loop = asyncio.get_event_loop()
 
