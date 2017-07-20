@@ -8,6 +8,7 @@ RUN apt-get update \
 	&& DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends gcc build-essential \
 	&& pip install -r /app/requirements.txt \
 	&& DEBIAN_FRONTEND=noninteractive apt-get remove -y gcc build-essential \
+	&& DEBIAN_FRONTEND=noninteractive apt-get autoremove \
 	&& rm -rf /var/lib/apt/lists
 
 ARG timezone
