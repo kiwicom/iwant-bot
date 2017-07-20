@@ -109,7 +109,7 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
                 query_results = query_results.filter(
                     IWantRequest.activity == activity)
             result = [record.toIWantRequest(base.person_id)
-                for base, record in query_results.all()]
+                      for base, record in query_results.all()]
         return result
 
     def remove_activity_request(self, request_id, person_id):
