@@ -1,6 +1,7 @@
 # iwant-bot
 
 [![Documentation Status](https://readthedocs.org/projects/iwantbot/badge/?version=latest)](http://iwantbot.readthedocs.io/en/latest/?badge=latest)
+[![Coverage Status](https://coveralls.io/repos/github/kiwicom/iwant-bot/badge.svg?branch=master)](https://coveralls.io/github/kiwicom/iwant-bot?branch=master)
 
 Slackbot project implemented by [Kiwi.com](Kiwi.com) interns.
 
