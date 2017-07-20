@@ -2,3 +2,5 @@ aiohttp
 sqlalchemy
 aioslacker
 celery[redis]
+psycopg2
+dateparser
