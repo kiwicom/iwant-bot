@@ -18,7 +18,7 @@ services:
     ports:
      - "8080:80"
   postgres:
-    image: "postgres:9"
+    image: "postgres:9.6-alpine"
     environment:
       - POSTGRES_PASSWORD
       - POSTGRES_USER

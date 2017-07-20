@@ -27,20 +27,72 @@ def test_storage_sqlite_saves_and_restores():
     storage_saves_and_restores(store)
 
 
-@pytest.mark.skipif("POSTGRES_USER" not in os.environ,
-                    reason="Postgres container connection is not configured correctly")
-def test_storage_postgres_saves_and_restores():
-    # TODO: do this properly as a pytest teardown function.
+@pytest.fixture()
+def postgres_store():
     username = os.environ["POSTGRES_USER"]
     password = os.environ["POSTGRES_PASSWORD"]
     store = storage_sqlalchemy.SqlAlchemyRequestStorage(
         f"postgresql+psycopg2://{username}:{password}@postgres/{username}")
-    storage_saves_and_restores(store)
+    return store
 
 
-def test_storage_removes():
+@pytest.mark.skipif("POSTGRES_USER" not in os.environ,
+                    reason="Postgres container connection is not configured correctly")
+def test_storage_postgres_saves_and_restores(postgres_store):
+    storage_saves_and_restores(postgres_store)
+
+
+def test_memory_storage_removes():
     store = storage.MemoryRequestsStorage()
+    storage_removes(store)
+
+
+def test_sqlite_storage_removes():
+    store = storage_sqlalchemy.SqlAlchemyRequestStorage("sqlite:///here.sqlite")
+    storage_removes(store)
+
+
+@pytest.mark.skipif("POSTGRES_USER" not in os.environ,
+                    reason="Postgres container connection is not configured correctly")
+def test_postgres_storage_removes(postgres_store):
+    storage_removes(postgres_store)
+
+
+def test_sqlite_storage_resloves():
+    store = storage_sqlalchemy.SqlAlchemyRequestStorage("sqlite:///here.sqlite")
+    storage_resolves(store)
+
+
+def storage_resolves(store):
+    store.wipe_database()
     request = requests.IWantRequest("john", "coffee", 0, 0, 0)
+    request.id = "one"
+    store.store_request(request)
+
+    request = requests.IWantRequest("john", "coffee", 0, 0, 0)
+    request.id = "foo"
+    store.store_request(request)
+
+    store.resolve_requests(["one", "foo"])
+    resolved_requests = store.get_activity_requests("coffee")
+    result_id = resolved_requests[0].resolved_by
+    assert result_id is not None
+    assert result_id == resolved_requests[1].resolved_by
+
+    request = requests.IWantRequest("john", "coffee", 0, 0, 0)
+    request.id = "bar"
+    store.store_request(request)
+
+    store.resolve_requests(["one", "foo", "bar"])
+    resolved_requests = store.get_activity_requests("coffee")
+    for req in resolved_requests:
+        assert req.resolved_by == result_id
+
+
+def storage_removes(store):
+    store.wipe_database()
+    request = requests.IWantRequest("john", "coffee", 0, 0, 0)
+    request.id = "one"
     store.store_request(request)
     request = requests.IWantRequest("john", "coffee", 0, 0, 0)
     request.id = "foo"
@@ -53,11 +105,33 @@ def test_storage_removes():
     assert len(store.get_activity_requests()) == 1
 
 
-def test_storage_filters_activities():
+def test_memory_storage_filters_activities():
     store = storage.MemoryRequestsStorage()
-    store.store_request(requests.IWantRequest("john", "coffee", 1, 0, 0))
-    store.store_request(requests.IWantRequest("jack", "coffee", 6, 0, 0))
-    store.store_request(requests.IWantRequest("jane", "tea", 2, 0, 0))
+    storage_filters_activities(store)
+
+
+def test_sqlite_storage_filters_activities():
+    store = storage_sqlalchemy.SqlAlchemyRequestStorage("sqlite:///here.sqlite")
+    storage_filters_activities(store)
+
+
+@pytest.mark.skipif("POSTGRES_USER" not in os.environ,
+                    reason="Postgres container connection is not configured correctly")
+def test_postgres_storage_filters_activities(postgres_store):
+    storage_filters_activities(postgres_store)
+
+
+def storage_filters_activities(store):
+    store.wipe_database()
+    request = requests.IWantRequest("john", "coffee", 1, 0, 0)
+    request.id = "1"
+    store.store_request(request)
+    request = requests.IWantRequest("jack", "coffee", 6, 0, 0)
+    request.id = "2"
+    store.store_request(request)
+    request = requests.IWantRequest("jane", "tea", 2, 0, 0)
+    request.id = "3"
+    store.store_request(request)
 
     recovered_tea_requests = store.get_activity_requests("tea")
     assert len(recovered_tea_requests) == 1
@@ -66,8 +140,8 @@ def test_storage_filters_activities():
     recovered_coffee_requests = store.get_activity_requests("coffee")
     assert len(recovered_coffee_requests) == 2
 
-    recovered_coffee_requests = store.get_activity_requests()
-    assert len(recovered_coffee_requests) == 3
+    recovered_all_requests = store.get_activity_requests()
+    assert len(recovered_all_requests) == 3
 
 
 def test_task_queue():

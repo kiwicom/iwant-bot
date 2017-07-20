@@ -1,8 +1,9 @@
 import abc
 from contextlib import contextmanager
 
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, String, ForeignKey, Float
+from sqlalchemy import Column, String, ForeignKey, Float, Integer
 
 from . import requests
 from . import storage
@@ -40,7 +41,9 @@ class SQLAlchemyStorage(abc.ABC):
 class Request(RequestsBase):
     __tablename__ = 'requests'
 
-    id = Column(String, nullable=False, primary_key=True)
+    activity_requests = relationship("IWantRequest", cascade="delete")
+
+    id = Column(String, nullable=False, primary_key=True, unique=True)
     person_id = Column(String, nullable=False)
 
 
@@ -48,18 +51,27 @@ class IWantRequest(RequestsBase):
     __tablename__ = 'iwantrequests'
 
     id = Column(String, ForeignKey("requests.id"),
-                primary_key=True)
+                primary_key=True, unique=True)
     deadline = Column(Float, nullable=False)
     activity_start = Column(Float, nullable=False)
     activity_duration = Column(Float, nullable=False)
     activity = Column(String, nullable=False)
+
+    resolved_by = Column(Integer, ForeignKey("results.id"), nullable=True)
 
     def toIWantRequest(self, person_id=None):
         result = requests.IWantRequest(
             person_id, self.activity, self.deadline,
             self.activity_start, self.activity_duration)
         result.id = self.id
+        result.resolved_by = self.resolved_by
         return result
+
+
+class Result(RequestsBase):
+    __tablename__ = 'results'
+
+    id = Column(Integer, primary_key=True, unique=True, autoincrement=True)
 
 
 class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
@@ -96,8 +108,44 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
             if activity is not None:
                 query_results = query_results.filter(
                     IWantRequest.activity == activity)
-            result = [record.toIWantRequest(base.person_id) for base, record in query_results.all()]
+            result = [record.toIWantRequest(base.person_id)
+                      for base, record in query_results.all()]
         return result
 
     def remove_activity_request(self, request_id, person_id):
-        pass
+        with self.session_scope() as session:
+            query_results = (
+                session.query(Request)
+                .filter(Request.id == request_id, Request.person_id == person_id)
+            )
+            all_results = query_results.all()
+            assert len(all_results) == 1
+            session.delete(all_results[0])
+
+    def resolve_requests(self, requests_ids):
+        with self.session_scope() as session:
+            query_results = (
+                session.query(IWantRequest)
+                .filter(IWantRequest.id.in_(requests_ids))
+            )
+            resolved_by = None
+            all_results = query_results.all()
+            assert len(all_results) > 1
+            for record in all_results:
+                if record.resolved_by is not None:
+                    resolved_by = record.resolved_by
+            if resolved_by is None:
+                resolved_by = self._create_result()
+            for record in all_results:
+                record.resolved_by = resolved_by
+
+    def _create_result(self):
+        # The context manager doesn't work for some reason
+        from sqlalchemy.orm import sessionmaker
+        session = sessionmaker(bind=self.engine)()
+        result = Result()
+        session.add(result)
+        session.commit()
+        result_id = result.id
+        session.close()
+        return result_id
