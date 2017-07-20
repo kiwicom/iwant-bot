@@ -24,7 +24,7 @@ services:
   worker:
     build:
       context: .
-    command: celery -A bot_worker worker --loglevel=info --beat
+    command: celery -A bot_worker worker --loglevel=info --beat --autoscale=20,0
     volumes:
       - .:/app
     links:
