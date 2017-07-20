@@ -50,7 +50,7 @@ def test_ignored_pairs():
     pool.ignore_list.ignore('olivia', 'andrew')
     pool.ignore_list.ignore('olivia', 'martin')
     for activity in pool.activity_list:
-        pool.make_groups(activity)
+        pool.make_groups(pool, activity)
     assert len(pool.pairs['picnic']) == 1
     assert len(pool.pairs['coffee']) == 8
 
@@ -63,7 +63,7 @@ def test_ignored_groups_of_7():
     pool.ignore_list.ignore('olivia', 'andrew')
     pool.ignore_list.ignore('olivia', 'martin')
     for activity in pool.activity_list:
-        pool.make_groups(activity, 7)
+        pool.make_groups(pool, activity, 7)
     assert len(pool.pairs['picnic']) == 0
     assert len(pool.pairs['coffee']) == 2
 
@@ -71,7 +71,7 @@ def test_ignored_groups_of_7():
 def test_pairing_activities():
     pool = make_filled_request_pool()
     for activity in pool.activity_list:
-        pool.make_groups(activity)
+        pool.make_groups(pool, activity)
     assert len(pool.pairs['picnic']) == 2
     assert len(pool.pairs['coffee']) == 8
 
