@@ -45,6 +45,10 @@ class RequestStorage(abc.ABC):
     def wipe_database(self):
         pass
 
+    @abc.abstractmethod
+    def resolve_requests(self, requests):
+        pass
+
 
 # TODO: Remove -> Invalidate
 # store results ID of the result the request is solved by.
@@ -79,6 +83,9 @@ class MemoryRequestsStorage(RequestStorage):
         activity_requests.remove(request_to_remove)
 
     def wipe_database(self):
+        pass
+
+    def resolve_requests(self, requests):
         pass
 
 

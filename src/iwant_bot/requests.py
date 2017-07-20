@@ -2,6 +2,12 @@ import time
 import typing
 
 
+class Status(object):
+    PENDING = 0
+    INVALID = 1
+    DONE = 2
+
+
 class Request(object):
     def __init__(self, person_id, request_id=None):
         self.person_id = person_id
@@ -38,6 +44,7 @@ class IWantRequest(Request):
                 or self.deadline != rhs.deadline
                 or self.activity_start != rhs.activity_start
                 or self.activity_duration != rhs.activity_duration
+                or self.resolved_by != rhs.resolved_by
                 ):
             result = False
         return result
