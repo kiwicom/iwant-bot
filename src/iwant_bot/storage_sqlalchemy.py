@@ -72,6 +72,8 @@ class Result(RequestsBase):
     __tablename__ = 'results'
 
     id = Column(Integer, primary_key=True, unique=True, autoincrement=True)
+    # notification_status
+    # deadline
 
 
 class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):

@@ -49,6 +49,14 @@ class RequestStorage(abc.ABC):
     def resolve_requests(self, requests):
         pass
 
+    @abc.abstractmethod
+    def get_requests_near_expiring(self, time_interval):
+        pass
+
+    @abc.abstractmethod
+    def get_requests_of_result(self, result_id):
+        pass
+
 
 # TODO: Remove -> Invalidate
 # store results ID of the result the request is solved by.
