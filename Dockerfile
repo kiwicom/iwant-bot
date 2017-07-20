@@ -2,8 +2,10 @@ FROM python:3.6-alpine
 
 COPY requirements.txt app/
 
-RUN pip install gunicorn \
-	&& pip install -r /app/requirements.txt
+RUN apk --no-cache add gcc musl-dev \
+    && pip install gunicorn \
+	&& pip install -r /app/requirements.txt \
+    && apk del gcc musl-dev
 
 ARG timezone
 

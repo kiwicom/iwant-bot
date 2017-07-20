@@ -4,15 +4,22 @@
 #
 #    pip-compile --output-file requirements.txt requirements.in
 #
-aiohttp==2.1.0
-aioslacker==0.0.6
+aiohttp==2.2.3
+aioslacker==0.0.7
 async-timeout==1.2.1      # via aiohttp
 certifi==2017.4.17        # via requests
-chardet==3.0.3            # via aiohttp, requests
+chardet==3.0.4            # via aiohttp, requests
+dateparser==0.6.0
 idna==2.5                 # via requests
-multidict==2.1.6          # via aiohttp, yarl
-requests==2.17.3          # via slacker
+multidict==3.1.3          # via aiohttp, yarl
+python-dateutil==2.6.1    # via dateparser
+pytz==2017.2              # via dateparser, tzlocal
+regex==2017.7.11          # via dateparser
+requests==2.18.1          # via slacker
+ruamel.yaml==0.15.19      # via dateparser
+six==1.10.0               # via python-dateutil
 slacker==0.9.42           # via aioslacker
-sqlalchemy==1.1.10
+sqlalchemy==1.1.11
+tzlocal==1.4              # via dateparser
 urllib3==1.21.1           # via requests
-yarl==0.10.2              # via aiohttp
+yarl==0.12.0              # via aiohttp
