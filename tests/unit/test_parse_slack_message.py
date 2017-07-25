@@ -1,10 +1,8 @@
-from iwant_bot.iwant_parser import IwantParser
+from iwant_bot.iwant_process import IwantRequest
 import iwant_bot.start
 
-default = IwantParser._default_duration
-max_duration = IwantParser._max_duration
-activities = iwant_bot.start._iwant_activities
-behests = iwant_bot.start._iwant_behest
+default = iwant_bot.start._default_duration
+max_duration = iwant_bot.start._max_duration
 
 # format: (text, activities, user_ids, time, behest)
 messages = (
@@ -48,7 +46,7 @@ messages = (
     ('unsubscribe coffee', ['coffee', ], [], default, ['unsubscribe', ]),
 
     ('coffee in 19 minutes', ['coffee', ], [], 19 * 60.0, []),
-    ('coffee in 0 minutes', ['coffee', ], [], 1.0, []),         # minimum duration is 1 s
+    ('coffee in 0 minutes', ['coffee', ], [], 0, []),
     ('coffee in 13minutes', ['coffee', ], [], 13 * 60.0, []),
     ('coffee in 20 min', ['coffee', ], [], 20 * 60.0, []),
     ('coffee in 21min', ['coffee', ], [], 21 * 60.0, []),
@@ -83,14 +81,24 @@ messages = (
     # ('/ coffee', ['coffee', ], [], default, []),
     # ('+ coffee', ['coffee', ], [], default, []),
     # ('- coffee', ['coffee', ], [], default, []),
+
+    # ('coffee during 20 min', ['coffee', ], [], 20 * 60.0, []),    # cannot parse 'during'
 )
 
 
 def test_parse_messages():
     for line in messages:
-        test = IwantParser({'text': line[0], 'incoming_ts': 0}, activities, behests)
+        test = IwantRequest(
+            {'text': line[0]},
+            iwant_bot.start._iwant_activities,
+            iwant_bot.start._iwant_behest,
+            iwant_bot.start._slack_user_pattern,
+            iwant_bot.start._other_words,
+            default,
+            max_duration
+        )
         print(line)
         assert test.data['activities'] == line[1]
         assert test.data['invite_users_id'] == line[2]
-        assert round(test.data['deadline_ts']) == line[3]
+        assert round(test.data['action_duration']) == line[3]
         assert test.data['behests'] == line[4]

@@ -4,7 +4,7 @@ from os import getenv
 import re
 import time
 from iwant_bot.slack_communicator import SlackCommunicator
-from iwant_bot.iwant_parser import IwantParser
+from iwant_bot.iwant_process import IwantRequest
 
 
 VERIFICATION = getenv('VERIFICATION')
@@ -24,9 +24,15 @@ elif not re.match('xoxp', SUPER_TOKEN):
     print('Warning: "OAuth Access Token" does not begin with "xoxp".')
 
 
-_commands = ('/iwant', )
 _iwant_activities = ('coffee', )
-_iwant_behest = ('list', 'subscribe', 'unsubscribe')
+_iwant_behest = ('list', 'subscribe', 'unsubscribe', 'help')
+# other_words are expected words in the user message, which should be removed before dateparse.
+_other_words = ('iwant', 'with', 'invite', 'or', 'and')  # uppercase will be problem.
+_default_duration = 900.0  # Implicit duration of activity in seconds (15 min).
+_max_duration = 43200.0  # 12 hours is maximal duration of any request.
+# Expect expanded Slack format like <@U1234|user> <#C1234|general>.
+# Turn on 'Escape channels, users, and links sent to your app'.
+_slack_user_pattern = '<@([A-Z0-9]+)\|[a-z0-9][-_.a-z0-9]{1,20}>'
 
 
 class TokenError(Exception):
@@ -44,8 +50,7 @@ async def handle_other_posts(request):
     """Handle all other POST requests.
     For testing purpose, `curl -X POST --data "text=test" http://localhost:8080/example`"""
     body = multidict_to_dict(await request.post())
-    print(body)
-    print(request.match_info['post'])
+    print(f"INFO: The post to endpoint /{request.match_info['post']} contained:\n {body}")
     return web.json_response({'text': f"POST to /{request.match_info['post']} is not resolved."})
 
 
@@ -59,7 +64,7 @@ def multidict_to_dict(multidict) -> dict:
 async def handle_slack_iwant(request):
     body = multidict_to_dict(await request.post())
     body['incoming_ts'] = time.time()
-    print(body)
+    print(f'INFO: iwant request body:\n{body}.')
 
     try:
         verify_request_token(body)
@@ -68,44 +73,62 @@ async def handle_slack_iwant(request):
         return web.json_response({'text': 'Unverified message.'})
 
     if 'command' in body:
-        if body['command'] == '/iwant':
-            iwant_object = IwantParser(body, _iwant_activities, _iwant_behest)
-        else:
-            print(f"WARNING: iwant handler handles command '{body['command']}'")
-            return web.json_response({'text': 'Something went wrong.'})
+        print(f"INFO: iwant handler handles command '{body['command']}'")
     else:
         print("WARNING: Request does not specify 'command'.")
-        return web.json_response({'text': 'Something went wrong.'})
+        return web.json_response({'text': 'Tried to handle command, but none found.'})
 
-    print(iwant_object.data)
+    iwant_object = IwantRequest(body, _iwant_activities, _iwant_behest, _slack_user_pattern,
+                                _other_words, _default_duration, _max_duration)
+    print(f'INFO: iwant parsed request:\n{iwant_object.data}')
 
     # Check and process the behests
+    res = handle_slack_iwant_behest(iwant_object)
+    if res is not None:
+        return web.json_response(res)
+
+    # If no behest, then resolve the activities
+    return web.json_response(handle_slack_iwant_command(iwant_object))
+
+
+def handle_slack_iwant_behest(iwant_object) -> dict or None:
     if len(iwant_object.data['behests']) > 1:
-        return web.json_response({'text': "You can use only one at the same time from:\n"
-                                          f" {', '.join(_iwant_behest)}"})
+        print("INFO: More than 1 behest was found.")
+        return {'text': f"You can use only one from `{'`, `'.join(iwant_object.possible_behests)}`"
+                        " at the same time."}
     elif len(iwant_object.data['behests']) == 1:
-        # list
-        if iwant_object.data['behests'][0] == 'list':
-            return web.json_response(iwant_object.return_list_of_parameters())
+        print(f"INFO: iwant request found behest '{iwant_object.data['behests'][0]}'.")
+        if iwant_object.data['behests'] == ['list']:
+            return iwant_object.return_list_of_parameters()
+        elif iwant_object.data['behests'] == ['help']:
+            return iwant_object.create_help_message()
         # other behests
         else:
-            return web.json_response({'text': f"{iwant_object.data['behests'][0]}"
-                                              " is not implemented yet. Coming soon!"})
+            return {'text': f"{iwant_object.data['behests'][0]}"
+                            " is not implemented yet. Coming soon!"}
+    else:
+        return None
 
-    # If no behest, then check and process the activities
+
+def handle_slack_iwant_command(iwant_object) -> dict:
     if len(iwant_object.data['activities']) == 0:
-        return web.json_response(iwant_help_message())
-    elif len(iwant_object.data['activities']) > 0:
-        # send to the logic and storage:
-        if iwant_object.create_iwant_task():    # produce callback_id
-            return web.json_response(iwant_object.create_accepted_response())
-        else:
-            print('WARNING: Something went wrong between the storage and server.')
-            return web.json_response({'text': 'Server problem. Please, try it again.'})
+        print('INFO: No activities or behests, return help.')
+        return iwant_object.create_help_message()
+    elif len(iwant_object.data['activities']) == 1:
+        print(f'INFO: iwant request found activities {iwant_object.data["activities"][0]}.')
 
-    # If no condition were met, than something is not implemented.
-    print('WARNING: /iwant command did nothing.')
-    return web.json_response({'text': 'Nothing happened.'})
+        try:
+            callback_id = iwant_object.store_iwant_task(iwant_object.data["activities"][0])
+            iwant_object.data['callback_id'] = callback_id
+        except Exception as e:
+            print(f'ERROR: "{iwant_object.data["activities"][0]}" did not get callback_id.')
+            print(e)
+
+        print(f"INFO: iwant request obtained callback_id {iwant_object.data['callback_id']}")
+        return iwant_object.create_accepted_response()
+    else:
+        print("INFO: More than 1 activities was found.")
+        return {'text': f"You can ask only for one activity in one command."}
 
 
 def verify_request_token(body: dict) -> None:
@@ -113,23 +136,6 @@ def verify_request_token(body: dict) -> None:
     Raise TokenError, if token does not match."""
     if not body['token'] == VERIFICATION:
         raise TokenError(f"Token {body['token']} is not valid.")
-
-
-def iwant_help_message() -> dict:
-    """Create help message for /iwant command.
-    Called by empty command "/iwant" or when no activity is recognized."""
-    text = ('This is `/iwant` help.\n'
-            'Use `/iwant activity` to let me know, what you want to do.'
-            ' I will find someone, who will join you!\n'
-            'You can get the list of available activities by `\iwant list`.\n'
-            'Some examples:\n'
-            '  `/iwant coffee`\n'
-            '  `/iwant coffee in 35 min with @alex`'
-            ' (I will notify @alex, but everyone can join.)\n'
-            'Also, you can be always informed about some activity:\n'
-            '`\iwant (un)subscribe table_football`'
-            )
-    return {'text': text}
 
 
 app = web.Application()
