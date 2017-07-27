@@ -50,10 +50,10 @@ class RequestStorage(abc.ABC):
         pass
 
     # @abc.abstractmethod
-    def get_requests_near_expiring(self, time_interval):
+    def get_requests_by_deadline_proximity(self, deadline, time_proximity):
         pass
 
-    # @abc.abstractmethod
+    @abc.abstractmethod
     def get_requests_of_result(self, result_id):
         pass
 
@@ -62,24 +62,32 @@ class RequestStorage(abc.ABC):
 # store results ID of the result the request is solved by.
 class MemoryRequestsStorage(RequestStorage):
     def __init__(self):
-        self._requests = collections.defaultdict(list)
+        self._all_requests = set()
+        self._requests_by_id = dict()
+        self._results = collections.defaultdict(set)
+
+        self._result_counter = 0
 
     def store_request(self, request):
         if isinstance(request, requests.IWantRequest):
-            destination = self._requests["activity"]
+            print(request.id)
+            self._all_requests.add(request)
+            if request.id is not None:
+                self._requests_by_id[request.id] = request
+            if request.resolved_by is not None:
+                self._results[request.resolved_by].add(request)
         else:
             raise ValueError(f"Can't store requests of type {type(request)}.")
-        destination.append(request)
 
     def get_activity_requests(self, activity=None):
-        ret = list(self._requests["activity"])
+        ret = list(self._all_requests)
         if activity is not None:
             ret = [req for req in ret
                    if req.activity == activity]
         return ret
 
     def remove_activity_request(self, request_id, person_id):
-        activity_requests = self._requests["activity"]
+        activity_requests = self._requests_by_id.values()
 
         def request_has_right_id(req): return req.id == request_id
         requests_with_right_id = list(filter(request_has_right_id, activity_requests))
@@ -88,13 +96,47 @@ class MemoryRequestsStorage(RequestStorage):
         request_to_remove = requests_with_right_id[0]
         assert request_to_remove.person_id == person_id, \
             f"The request of the given ID can't be removed by {person_id}"
-        activity_requests.remove(request_to_remove)
+        self._remove_request_by_id(request_id)
+
+    def _remove_request_by_id(self, request_id):
+        request = self._requests_by_id[request_id]
+        self._requests_by_id.pop(request_id)
+        self._all_requests.discard(request)
+        if request.resolved_by is not None:
+            self._results[request.resolved_by].discard(request)
+
+    def _create_result(self):
+        self._result_counter += 1
+        return self._result_counter
 
     def wipe_database(self):
         pass
 
-    def resolve_requests(self, requests):
-        pass
+    def resolve_requests(self, requests_ids):
+        all_requests = [self._requests_by_id[id] for id in requests_ids]
+        assert len(all_requests) > 1
+
+        resolved_by = None
+        for request in all_requests:
+            if request.resolved_by is not None:
+                resolved_by = request.resolved_by
+
+        if resolved_by is None:
+            resolved_by = self._create_result()
+        for request in all_requests:
+            self._remove_request_by_id(request.id)
+            request.resolved_by = resolved_by
+            self.store_request(request)
+
+    def get_requests_of_result(self, result_id):
+        return self._results[result_id]
+
+    def get_requests_by_deadline_proximity(self, deadline, time_proximity):
+        time_start = deadline
+        time_end = time_start + time_proximity
+        for req in self._all_requests:
+            pass
+        return []
 
 
 class TaskQueue(abc.ABC):

@@ -67,9 +67,20 @@ def test_postgres_storage_removes(postgres_store):
     storage_removes(postgres_store)
 
 
+def test_memory_storage_resolves_and_fetches():
+    store = storage.MemoryRequestsStorage()
+    storage_resolves_and_fetches(store)
+
+
 def test_sqlite_storage_resloves():
     store = storage_sqlalchemy.SqlAlchemyRequestStorage("sqlite:///here.sqlite")
     storage_resolves_and_fetches(store)
+
+
+@pytest.mark.skipif("POSTGRES_USER" not in os.environ,
+                    reason="Postgres container connection is not configured correctly")
+def test_postgres_storage_removes(postgres_store):
+    storage_resolves_and_fetches(postgres_store)
 
 
 def storage_resolves_and_fetches(store):
@@ -82,6 +93,7 @@ def storage_resolves_and_fetches(store):
 
     store.resolve_requests(["one", "two"])
     resolved_requests = store.get_activity_requests("coffee")
+    resolved_requests = list(filter(lambda r: r.id in ("one", "two"), resolved_requests))
     coffee_result_id = resolved_requests[0].resolved_by
     assert coffee_result_id is not None
     assert coffee_result_id == resolved_requests[1].resolved_by
@@ -121,6 +133,15 @@ def storage_removes(store):
         store.remove_activity_request("foo", "jack")
     store.remove_activity_request("foo", "john")
     assert len(store.get_activity_requests()) == 1
+
+
+def storage_understands_time(store):
+    store.wipe_database()
+    stack = make_request_stacker(store)
+
+    stack("one", "john", "coffee")
+    stack("two", "janine", "tea")
+    stack("three", "paul", "wine")
 
 
 def test_memory_storage_filters_activities():
