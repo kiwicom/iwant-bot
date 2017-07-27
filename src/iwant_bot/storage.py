@@ -46,6 +46,11 @@ class RequestStorage(abc.ABC):
         pass
 
 
+    @abc.abstractmethod
+    def resolve_requests(self, requests):
+        pass
+
+
 # TODO: Remove -> Invalidate
 # store results ID of the result the request is solved by.
 class MemoryRequestsStorage(RequestStorage):
@@ -81,7 +86,10 @@ class MemoryRequestsStorage(RequestStorage):
     def wipe_database(self):
         pass
 
+    def resolve_requests(self, requests):
+        pass
 
+    
 class TaskQueue(abc.ABC):
     @abc.abstractmethod
     def __init__(self):
