@@ -40,8 +40,6 @@ class SQLAlchemyStorage(abc.ABC):
 class Request(RequestsBase):
     __tablename__ = 'requests'
 
-    activity_requests = relationship("IWantRequest", cascade="delete")
-
     id = Column(String, nullable=False, primary_key=True, unique=True)
     person_id = Column(String, nullable=False)
 

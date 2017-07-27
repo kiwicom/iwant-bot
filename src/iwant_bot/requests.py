@@ -7,6 +7,7 @@ class Status(object):
     INVALID = 1
     DONE = 2
 
+
 class Request(object):
     def __init__(self, person_id, request_id=None):
         self.person_id = person_id

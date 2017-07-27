@@ -153,7 +153,7 @@ def test_task_queue():
     store.store_task("covfefe-tweeted")
     assert store.retreive_task() == ("covfefe-tweeted")
 
-    
+
 def test_results_storage():
     store = storage.MemoryResultsStorage()
     late_result = requests.Result(["3"], 2)
