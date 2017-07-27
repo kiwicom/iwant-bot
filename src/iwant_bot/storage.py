@@ -45,7 +45,6 @@ class RequestStorage(abc.ABC):
     def wipe_database(self):
         pass
 
-
     @abc.abstractmethod
     def resolve_requests(self, requests):
         pass
@@ -89,7 +88,7 @@ class MemoryRequestsStorage(RequestStorage):
     def resolve_requests(self, requests):
         pass
 
-    
+
 class TaskQueue(abc.ABC):
     @abc.abstractmethod
     def __init__(self):

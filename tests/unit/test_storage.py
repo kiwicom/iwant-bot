@@ -132,7 +132,7 @@ def storage_filters_activities(store):
     request = requests.IWantRequest("jane", "tea", 2, 0, 0)
     request.id = "3"
     store.store_request(request)
-    
+
     recovered_tea_requests = store.get_activity_requests("tea")
     assert len(recovered_tea_requests) == 1
     assert recovered_tea_requests[0].person_id == "jane"
