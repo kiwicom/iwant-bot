@@ -1,10 +1,11 @@
 import asyncio
 from aiohttp import web
-import json
 from os import getenv
-from re import match
-from aioslacker import Slacker
+import re
+import time
 from iwant_bot.slack_communicator import SlackCommunicator
+from iwant_bot.iwant_process import IwantRequest
+
 
 VERIFICATION = getenv('VERIFICATION')
 if VERIFICATION is None:
@@ -13,104 +14,147 @@ if VERIFICATION is None:
 BOT_TOKEN = getenv('BOT_TOKEN')
 if BOT_TOKEN is None:
     print('Warning: Unknown BOT_TOKEN "Bot User OAuth Access Token".')
-elif not match('xoxb', BOT_TOKEN):
+elif not re.match('xoxb', BOT_TOKEN):
     print('Warning: "Bot User OAuth Access Token" does not begin with "xoxb".')
 
 SUPER_TOKEN = getenv('SUPER_TOKEN')
 if SUPER_TOKEN is None:
     print('Warning: Unknown SUPER_TOKEN "OAuth Access Token".')
-elif not match('xoxp', SUPER_TOKEN):
+elif not re.match('xoxp', SUPER_TOKEN):
     print('Warning: "OAuth Access Token" does not begin with "xoxp".')
 
 
-_commands = ('/iwant', '/iwant1')
+_iwant_activities = ('coffee', )
+_iwant_behest = ('list', 'help')
+# other_words are expected words in the user message, which should be removed before dateparse.
+_other_words = ('iwant', 'with', 'invite', 'or', 'and')  # uppercase will be problem.
+_default_duration = 900.0  # Implicit duration of activity in seconds (15 min).
+_max_duration = 43200.0  # 12 hours is maximal duration of any request.
+# Expect expanded Slack format like <@U1234|user> <#C1234|general>.
+# Turn on 'Escape channels, users, and links sent to your app'.
+_slack_user_pattern = '<@([A-Z0-9]+)\|[a-z0-9][-_.a-z0-9]{1,20}>'
 
 
-def format_message(message):
-    return message
+class TokenError(Exception):
+    pass
 
 
-async def handle(request):
-    name = request.rel_url.query.get('name', 'anonymous')
-    message = request.rel_url.query.get('msg', '')
-
-    text = ["We recognize the 'name' and 'msg' GET query attributes,"]
-    text += ['so you can do http://localhost:8080/?name=me&msg=message']
-    text += [f"Now, we got: '{format_message(message)}' by {name}"]
-    text += ['Or you can test POST request by command:']
-    text += ['> curl -X POST  --data "user_name=0&channel_id=1&channel_name=2']
-    text += ['  team_domain=4&team_id=5&text=6" http://localhost:8080']
-    return web.Response(text='\n'.join(text))
+async def handle_get(request):
+    """Handle GET request, can be display at http://localhost:8080"""
+    text = (f'Server is running at {request.url}.\n'
+            f'Try `curl -X POST --data "text=test" {request.url}example`\n')
+    return web.Response(text=text)
 
 
-def format_response(message='No response.'):
-    return json.dumps({'text': message})
+async def handle_other_posts(request):
+    """Handle all other POST requests.
+    For testing purpose, `curl -X POST --data "text=test" http://localhost:8080/example`"""
+    body = multidict_to_dict(await request.post())
+    print(f"INFO: The post to endpoint /{request.match_info['post']} contained:\n {body}")
+    return web.json_response({'text': f"POST to /{request.match_info['post']} is not resolved."})
 
 
-def verify_post_request(token):
-    """Slack `/commands` carry token, which must be same as VERIFICATION"""
-    return token == VERIFICATION
+def multidict_to_dict(multidict) -> dict:
+    if not len(set(multidict.keys())) == len(multidict):
+        print('WARNING: MultiDict contains duplicate keys, last occurrence was used.')
+        print(multidict)
+    return {key: multidict[key] for key in multidict}
 
 
-def body_to_dict(body):
-    """Try to convert MultiDictProxy to dictionary.
-    Not handled ValueError"""
-    keys = set(body.keys())
-    if len(keys) == len(body):
-        body_dict = {}
-        for key in keys:
-            body_dict[key] = body[key]
+async def handle_slack_iwant(request):
+    body = multidict_to_dict(await request.post())
+    body['incoming_ts'] = time.time()
+    print(f'INFO: iwant request body:\n{body}.')
+
+    try:
+        verify_request_token(body)
+    except (KeyError, TokenError) as err:
+        print(f'INFO: Invalid token: {err}')
+        return web.json_response({'text': 'Unverified message.'})
+
+    if 'command' in body:
+        print(f"INFO: iwant handler handles command '{body['command']}'")
     else:
-        raise ValueError('MultiDict contains same keys.')
-    return body_dict
+        print("WARNING: Request does not specify 'command'.")
+        return web.json_response({'text': 'Tried to handle command, but none found.'})
+
+    iwant_object = IwantRequest(body, _iwant_activities, _iwant_behest, _slack_user_pattern,
+                                _other_words, _default_duration, _max_duration)
+    print(f'INFO: iwant parsed request:\n{iwant_object.data}')
+
+    # Process behests
+    res = handle_slack_iwant_behest(iwant_object)
+    if res is not None:
+        return web.json_response(res)
+
+    # If no behest, then resolve activities
+    return web.json_response(handle_slack_iwant_command(iwant_object))
 
 
-def trigger_reaction(body, trigger):
-    """Commands: /iwant,
-    Trigger_words: None"""
-    message = format_response(
-        f"{body['user_name']} used {body[trigger]} with {body['text']}.")
-    return web.json_response(body=message)
+def complain(what: str, iwant_object) -> dict:
+    print(f'INFO: More than 1 {what} was found.')
+    if what == 'behest':
+        listing = f"`{'`, `'.join(iwant_object.possible_behests)}`"
+    elif what == 'activity':
+        listing = f"`{'`, `'.join(iwant_object.possible_activities)}`"
+    else:
+        print(f'WARNING: Someone complain to "{what}", but unknown meaning.')
+        return {'text': 'You cannot want this.'}
+
+    return {'text': f'You can use only one {what} from {listing} at the same time.'}
 
 
-async def handle_post(request):
-    body = body_to_dict(await request.post())
-    print(body)
-
-    if verify_post_request(body['token']):  # error if not 'token'
-        """Separation of cases like /iwant commands, responses, etc."""
-
-        triggers = ['command', 'trigger_word']  # stops with the first match
-        for key in triggers:
-            if key in body:
-                return trigger_reaction(body, key)
-            else:
-                print(f'{key} not found.')
+def handle_slack_iwant_behest(iwant_object) -> dict or None:
+    if len(iwant_object.data['behests']) == 1:
+        print(f"INFO: iwant request found behest '{iwant_object.data['behests'][0]}'.")
+        if iwant_object.data['behests'] == ['list']:
+            return iwant_object.return_list_of_parameters()
+        elif iwant_object.data['behests'] == ['help']:
+            return iwant_object.create_help_message()
+        # other behests
         else:
-            message = format_response(f"I don't get it, try {_commands}.")
+            return {'text': f"{iwant_object.data['behests'][0]} is not implemented yet."}
+
+    elif len(iwant_object.data['behests']) > 1:
+        return complain('behest', iwant_object)
+
     else:
-        message = format_response('Bad token, we do not listen to you!')
-
-    return web.json_response(body=message)
+        return None
 
 
-async def initial_message():
-    """ This sends message to the Slack. The message need to carry
-    the token BOT_TOKEN for verification by Slack."""
-    async with Slacker(BOT_TOKEN) as slack:
-        await slack.chat.post_message('#bot-channel',
-                                      'Hi, iwant-bot server was initialized')
+def handle_slack_iwant_command(iwant_object) -> dict:
+    if len(iwant_object.data['activities']) == 1:
+        print(f'INFO: iwant request found activities {iwant_object.data["activities"][0]}.')
+
+        try:
+            callback_id = iwant_object.store_iwant_task(iwant_object.data["activities"][0])
+            iwant_object.data['callback_id'] = callback_id
+        except Exception as e:
+            print(f'ERROR: "{iwant_object.data["activities"][0]}" did not get callback_id.')
+            print(e)
+
+        print(f"INFO: iwant request obtained callback_id {iwant_object.data['callback_id']}")
+        return iwant_object.create_accepted_response()
+
+    elif len(iwant_object.data['activities']) > 1:
+        return complain('activity', iwant_object)
+
+    else:
+        print('INFO: No activities or behests, return help.')
+        return iwant_object.create_help_message()
 
 
-async def handle_iwant(request):
-    body = body_to_dict(await request.post())
-    print(body)
-    return web.json_response({'text': 'Nothing.'})
+def verify_request_token(body: dict) -> None:
+    """Raise KeyError, if body does not have any key 'token'.
+    Raise TokenError, if token does not match."""
+    if not body['token'] == VERIFICATION:
+        raise TokenError(f"Token {body['token']} is not valid.")
+
 
 app = web.Application()
-app.router.add_get('/', handle)
-app.router.add_post('/', handle_post)
-app.router.add_post('/slack/iwant', handle_iwant)
+app.router.add_get(r'/{get:\w*}', handle_get)
+app.router.add_post('/slack/iwant', handle_slack_iwant)
+app.router.add_post(r'/{post:[\w/]*}', handle_other_posts)
 
 loop = asyncio.get_event_loop()
 
@@ -129,12 +173,11 @@ loop = asyncio.get_event_loop()
 # loop.run_until_complete(test1.send_message_to_each())
 
 
-# sent message to multiparty group of max 7 people + 1 iwant-bot. Does not need SUPER_TOKEN.
+# sent message to multiparty group of 2 to 7 people (+ 1 iwant-bot). Need BOT_TOKEN.
 # So, this is preferable variant...
 
 test2 = SlackCommunicator(BOT_TOKEN, ['U51RKKATS', 'U52FUHD98', 'U52FU3ZTL'], 'Sorry spam :).')
 loop.run_until_complete(test2.send_message_to_multiparty())
-
 
 if __name__ == '__main__':
     web.run_app(app)

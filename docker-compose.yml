@@ -5,6 +5,7 @@ services:
       # slackbot auth
       - BOT_TOKEN
       - VERIFICATION
+      - SUPER_TOKEN
       # postgres connection
       - POSTGRES_PASSWORD
       - POSTGRES_USER
