@@ -17,9 +17,10 @@ class IwantRequest(object):
         self.max_duration = max_duration
 
         self.data = body
-        self.data['activities'] = parse_text_for_words(body['text'], possible_activities)
-        self.data['behests'] = parse_text_for_words(body['text'], possible_behests)
-        self.data['invite_users_id'] = parse_text_for_people(body['text'], user_pattern)
+        self.data['activities'] = get_words_present_in_text(body['text'], possible_activities)
+        self.data['behests'] = get_words_present_in_text(body['text'], possible_behests)
+        self.data['invite_users_id'] = get_unique_strings_matching_pattern(
+            body['text'], user_pattern)
         date = parse_text_for_time(
             body['text'], user_pattern, possible_activities + possible_behests + other_words)
 
@@ -36,10 +37,10 @@ class IwantRequest(object):
             self.data['callback_id'] = []
 
     def return_list_of_parameters(self) -> dict:
-        text = 'Available activities are:\n`'
-        text += '`\n`'.join(self.possible_activities)
-        text += '`\nAvailable behests are:\n`'
-        text += '`\n`'.join(self.possible_behests) + '`'
+        text = 'Available activities are:\n`'\
+               + '`\n`'.join(self.possible_activities) \
+               + '`\nAvailable behests are:\n`'\
+               + '`\n`'.join(self.possible_behests) + '`'
         return {'text': text}
 
     def store_iwant_task(self, activity) -> str:
@@ -87,29 +88,27 @@ class IwantRequest(object):
                 '  `/iwant coffee`\n'
                 '  `/iwant coffee in 35 min with @alex`'
                 ' (I will notify @alex, but everyone can join.)\n'
-                # 'Also, you can be always informed about some activity:\n'
-                # '`\iwant (un)subscribe table_football`'
                 )
         return {'text': text}
 
 
-def parse_text_for_words(text: str, words: iter) -> list:
+def get_words_present_in_text(text: str, words: iter) -> list:
     """Search text for presence of whole given words."""
     return [word for word in words if
             re.search(fr'\b{word}\b', text)]
 
 
-def parse_text_for_people(text: str, user_pattern: str) -> list:
-    """Search text for names to be invite to activity. Names are described by user_pattern."""
-    return re.findall(user_pattern, text)
+def get_unique_strings_matching_pattern(text: str, pattern: str) -> list:
+    """Search text for e.g. names of users define by pattern."""
+    return list(set(re.findall(pattern, text)))
 
 
 def parse_text_for_time(text: str, user_pattern: str, words: iter) -> datetime or None:
     """Search text for duration of activities.
     Remove all other expected whole words and parse the rest.
-    Note: time formats can contain symbols +-:./"""
-    words_to_substitute = r'\b{}\b'.format(r'\b|\b'.join(words))
-    only_time_text = re.sub(rf'({user_pattern}|{words_to_substitute}|'
+    Note: time can contain symbols +-:./"""
+    words_to_remove = r'\b{}\b'.format(r'\b|\b'.join(words))
+    only_time_text = re.sub(rf'({user_pattern}|{words_to_remove}|'
                             r'''[][,;`*(){}"'!?\\]|'''
                             '\s*\.*\s*$)',
                             '', text)

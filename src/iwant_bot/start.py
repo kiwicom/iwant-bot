@@ -25,7 +25,7 @@ elif not re.match('xoxp', SUPER_TOKEN):
 
 
 _iwant_activities = ('coffee', )
-_iwant_behest = ('list', 'subscribe', 'unsubscribe', 'help')
+_iwant_behest = ('list', 'help')
 # other_words are expected words in the user message, which should be removed before dateparse.
 _other_words = ('iwant', 'with', 'invite', 'or', 'and')  # uppercase will be problem.
 _default_duration = 900.0  # Implicit duration of activity in seconds (15 min).
@@ -82,21 +82,30 @@ async def handle_slack_iwant(request):
                                 _other_words, _default_duration, _max_duration)
     print(f'INFO: iwant parsed request:\n{iwant_object.data}')
 
-    # Check and process the behests
+    # Process behests
     res = handle_slack_iwant_behest(iwant_object)
     if res is not None:
         return web.json_response(res)
 
-    # If no behest, then resolve the activities
+    # If no behest, then resolve activities
     return web.json_response(handle_slack_iwant_command(iwant_object))
 
 
+def complain(what: str, iwant_object) -> dict:
+    print(f'INFO: More than 1 {what} was found.')
+    if what == 'behest':
+        listing = f"`{'`, `'.join(iwant_object.possible_behests)}`"
+    elif what == 'activity':
+        listing = f"`{'`, `'.join(iwant_object.possible_activities)}`"
+    else:
+        print(f'WARNING: Someone complain to "{what}", but unknown meaning.')
+        return {'text': 'You cannot want this.'}
+
+    return {'text': f'You can use only one {what} from {listing} at the same time.'}
+
+
 def handle_slack_iwant_behest(iwant_object) -> dict or None:
-    if len(iwant_object.data['behests']) > 1:
-        print("INFO: More than 1 behest was found.")
-        return {'text': f"You can use only one from `{'`, `'.join(iwant_object.possible_behests)}`"
-                        " at the same time."}
-    elif len(iwant_object.data['behests']) == 1:
+    if len(iwant_object.data['behests']) == 1:
         print(f"INFO: iwant request found behest '{iwant_object.data['behests'][0]}'.")
         if iwant_object.data['behests'] == ['list']:
             return iwant_object.return_list_of_parameters()
@@ -104,17 +113,17 @@ def handle_slack_iwant_behest(iwant_object) -> dict or None:
             return iwant_object.create_help_message()
         # other behests
         else:
-            return {'text': f"{iwant_object.data['behests'][0]}"
-                            " is not implemented yet. Coming soon!"}
+            return {'text': f"{iwant_object.data['behests'][0]} is not implemented yet."}
+
+    elif len(iwant_object.data['behests']) > 1:
+        return complain('behest', iwant_object)
+
     else:
         return None
 
 
 def handle_slack_iwant_command(iwant_object) -> dict:
-    if len(iwant_object.data['activities']) == 0:
-        print('INFO: No activities or behests, return help.')
-        return iwant_object.create_help_message()
-    elif len(iwant_object.data['activities']) == 1:
+    if len(iwant_object.data['activities']) == 1:
         print(f'INFO: iwant request found activities {iwant_object.data["activities"][0]}.')
 
         try:
@@ -126,9 +135,13 @@ def handle_slack_iwant_command(iwant_object) -> dict:
 
         print(f"INFO: iwant request obtained callback_id {iwant_object.data['callback_id']}")
         return iwant_object.create_accepted_response()
+
+    elif len(iwant_object.data['activities']) > 1:
+        return complain('activity', iwant_object)
+
     else:
-        print("INFO: More than 1 activities was found.")
-        return {'text': f"You can ask only for one activity in one command."}
+        print('INFO: No activities or behests, return help.')
+        return iwant_object.create_help_message()
 
 
 def verify_request_token(body: dict) -> None:
@@ -160,12 +173,11 @@ loop = asyncio.get_event_loop()
 # loop.run_until_complete(test1.send_message_to_each())
 
 
-# sent message to multiparty group of max 7 people + 1 iwant-bot. Does not need SUPER_TOKEN.
+# sent message to multiparty group of 2 to 7 people (+ 1 iwant-bot). Need BOT_TOKEN.
 # So, this is preferable variant...
 
 test2 = SlackCommunicator(BOT_TOKEN, ['U51RKKATS', 'U52FUHD98', 'U52FU3ZTL'], 'Sorry spam :).')
 loop.run_until_complete(test2.send_message_to_multiparty())
-
 
 if __name__ == '__main__':
     web.run_app(app)
