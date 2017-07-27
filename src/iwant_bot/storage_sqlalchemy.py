@@ -1,8 +1,9 @@
 import abc
 from contextlib import contextmanager
+import datetime
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, String, ForeignKey, Float, Integer
+from sqlalchemy import Column, String, ForeignKey, Float, Integer, DateTime
 
 from . import requests
 from . import storage
@@ -49,8 +50,8 @@ class IWantRequest(Request):
 
     id = Column(String, ForeignKey("requests.id"),
                 primary_key=True, unique=True)
-    deadline = Column(Float, nullable=False)
-    activity_start = Column(Float, nullable=False)
+    deadline = Column(DateTime, nullable=False)
+    activity_start = Column(DateTime, nullable=False)
     activity_duration = Column(Float, nullable=False)
     activity = Column(String, nullable=False)
 
@@ -136,6 +137,19 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
             query_results = (
                 session.query(IWantRequest)
                 .filter(IWantRequest.resolved_by == result_id)
+            )
+            result = [record.toIWantRequest(record.person_id)
+                      for record in query_results.all()]
+        return result
+
+    def get_requests_by_deadline_proximity(self, deadline, time_proximity):
+        time_start = deadline
+        time_end = time_start + datetime.timedelta(seconds=time_proximity)
+        with self.session_scope() as session:
+            query_results = (
+                session.query(IWantRequest)
+                .filter(IWantRequest.deadline > time_start)
+                .filter(IWantRequest.deadline < time_end)
             )
             result = [record.toIWantRequest(record.person_id)
                       for record in query_results.all()]

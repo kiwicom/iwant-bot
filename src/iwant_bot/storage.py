@@ -1,6 +1,7 @@
 import abc
 import collections
 import queue
+import datetime
 
 from iwant_bot import requests
 
@@ -49,7 +50,7 @@ class RequestStorage(abc.ABC):
     def resolve_requests(self, requests):
         pass
 
-    # @abc.abstractmethod
+    @abc.abstractmethod
     def get_requests_by_deadline_proximity(self, deadline, time_proximity):
         pass
 
@@ -70,7 +71,6 @@ class MemoryRequestsStorage(RequestStorage):
 
     def store_request(self, request):
         if isinstance(request, requests.IWantRequest):
-            print(request.id)
             self._all_requests.add(request)
             if request.id is not None:
                 self._requests_by_id[request.id] = request
@@ -133,10 +133,12 @@ class MemoryRequestsStorage(RequestStorage):
 
     def get_requests_by_deadline_proximity(self, deadline, time_proximity):
         time_start = deadline
-        time_end = time_start + time_proximity
+        time_end = time_start + datetime.timedelta(seconds=time_proximity)
+        result = set()
         for req in self._all_requests:
-            pass
-        return []
+            if time_start < req.deadline < time_end:
+                result.add(req)
+        return result
 
 
 class TaskQueue(abc.ABC):

@@ -1,12 +1,17 @@
 import os
 
 import pytest
+import datetime
 
 from iwant_bot import storage, requests, storage_sqlalchemy
 
 
+NOW = datetime.datetime.now()
+TIME_1MIN = datetime.timedelta(minutes=1)
+
+
 def make_request_stacker(store):
-    def stack_request(uid, person, activity, args=(0, 0, 0)):
+    def stack_request(uid, person, activity, args=(NOW, NOW + 5 * TIME_1MIN, 60 * 5)):
         request = requests.IWantRequest(person, activity, * args)
         request.id = uid
         store.store_request(request)
@@ -135,18 +140,43 @@ def storage_removes(store):
     assert len(store.get_activity_requests()) == 1
 
 
+def test_memory_storage_understands_time():
+    store = storage.MemoryRequestsStorage()
+    storage_understands_time(store)
+
+
+def test_sqlite_storage_understands_time():
+    store = storage_sqlalchemy.SqlAlchemyRequestStorage("sqlite:///here.sqlite")
+    storage_understands_time(store)
+
+
 def storage_understands_time(store):
     store.wipe_database()
     stack = make_request_stacker(store)
 
-    stack("one", "john", "coffee")
-    stack("two", "janine", "tea")
-    stack("three", "paul", "wine")
+    stack("one", "john", "coffee", (NOW + TIME_1MIN * 0.8, NOW, 0))
+    stack("two", "janine", "tea", (NOW + TIME_1MIN, NOW, 0))
+    stack("three", "paul", "wine", (NOW + TIME_1MIN * 1.2, NOW, 0))
+
+    expiring_requests = store.get_requests_by_deadline_proximity(NOW, 58)
+    assert len(expiring_requests) == 1
+    expiring_requests.pop().id == "one"
+
+    expiring_requests = store.get_requests_by_deadline_proximity(NOW, 65)
+    assert len(expiring_requests) == 2
+    for req in expiring_requests:
+        assert req.id in ("one", "two")
 
 
 def test_memory_storage_filters_activities():
     store = storage.MemoryRequestsStorage()
     storage_filters_activities(store)
+
+
+@pytest.mark.skipif("POSTGRES_USER" not in os.environ,
+                    reason="Postgres container connection is not configured correctly")
+def test_postgres_storage_understands_time(postgres_store):
+    storage_understands_time(postgres_store)
 
 
 def test_sqlite_storage_filters_activities():
@@ -164,9 +194,9 @@ def storage_filters_activities(store):
     store.wipe_database()
     stack = make_request_stacker(store)
 
-    stack("1", "john", "coffee", (1, 0, 0))
-    stack("2", "jack", "coffee", (6, 0, 0))
-    stack("3", "jane", "tea", (2, 0, 0))
+    stack("1", "john", "coffee")
+    stack("2", "jack", "coffee")
+    stack("3", "jane", "tea")
 
     recovered_tea_requests = store.get_activity_requests("tea")
     assert len(recovered_tea_requests) == 1
