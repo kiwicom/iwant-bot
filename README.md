@@ -10,31 +10,34 @@ The bot is supposed to collect requests of users, and notify those who have comm
 However, that's just the basic example, the bot can be used to perform much more things - check out the [use cases](use_cases.rst) to see more ideas!
 
 ## WIP
-- first internship crew started on this 21th April 2017
-- MVP is going to be available at the end of May 2017
+* First internship crew started on 21th April 2017 and ended at the end of July.
+* The basic stup was implemented with the idea how it shoudl works.
 
 ## How to set up
 
 * Make sure you have `docker` and `docker-compose`.
-* Run `docker-compose up`.
-* Visit `http://localhost:8080` in your browser. Read the instructions and check out some GET requests!
+* Create your private`.env` file in the repository for sensitive information.
+* Run database: `docker-compose up -d postgres`.
+* Run app: `docker-compose up`.
+* Check `http://localhost:8080` in your browser.
 
 ### Slack App sets up
 
 Set up your [Slack App](https://api.slack.com/slack-apps) and connect it with your Slack Team. 
 You will obtain a token for validation of incoming requests. Create a file `.env` in the repository and insert your tokens:
 `BOT_TOKEN=xoxb-111111111111-a1A1a1A1a1A1a1A1a1A1a1A1`
-`VERIFICATION=b2B2b2B2b2B2b2B2b2B2b2B2`, which are private.
+`VERIFICATION=b2B2b2B2b2B2b2B2b2B2b2B2`, which are private. (And `SUPER_TOKEN` if you need extra privilege in Slack.)
 
 * _iwant-bot_ server listens to port 8080, so run [localtunnel](https://localtunnel.github.io/www/)
 or [ngrok](https://ngrok.com/) to create public adress, which you use in your Slack App. 
 
-* Currently, the _iwant-bot_ server recognizes slash command `/iwant`.
+* The _iwant-bot_ server recognizes slash command `/iwant`. Set endpoint of URL to `/slack/iwant` and turn on 'Escape channels, users, and links sent to your app' in Slack API: Slash Commands tab.
 
-* You can set up Incoming WebHook and send messages from _iwant-bot_ to the team channels.
+* The _iwant-bot_ accept Interactiv Messages from Slack at endpoint `/slack/button` which should be settup in Slack API: Interactiv Messages tab.
 
-* Still, you can check _iwant-bot_ locally
-`curl -X POST --data "user_name=0&channel_name=1&text=2&token=3" http://localhost:8080`.
+### Database sets up
+
+*
 
 ## Corner cases
 
@@ -42,7 +45,6 @@ or [ngrok](https://ngrok.com/) to create public adress, which you use in your Sl
  it means that the `requirements.txt` file needs to be regenerated from `requirements.in`.
   See `requirements.txt` for details on how to do it.
 * If the container timezone doesn't match, [override](https://docs.docker.com/compose/extends/#multiple-compose-files) the value of the `timezone` build argument.
-* Localtunnel can have problem with out network (502 bad gateway) and it is not stable, but you can define subdomain like `myslackbot.localtunnel.me`.
-* Ngrok tunnel subdomain is paid.
-* Do not forget to invite your bot to the channels.
+* Localtunnel can have some problems with [network or stability](https://github.com/localtunnel/server/issues), try ngrok.
+* Do not forget to invite your bot to the channels, if it should post messages into the channel.
 
