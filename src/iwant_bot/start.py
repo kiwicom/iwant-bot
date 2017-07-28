@@ -176,8 +176,8 @@ loop = asyncio.get_event_loop()
 # sent message to multiparty group of 2 to 7 people (+ 1 iwant-bot). Need BOT_TOKEN.
 # So, this is preferable variant...
 
-test2 = SlackCommunicator(BOT_TOKEN, ['U51RKKATS', 'U52FUHD98', 'U52FU3ZTL'], 'Sorry spam :).')
-loop.run_until_complete(test2.send_message_to_multiparty())
+# test2 = SlackCommunicator(BOT_TOKEN, ['U51RKKATS', 'U52FUHD98', 'U52FU3ZTL'], 'Sorry spam :).')
+# loop.run_until_complete(test2.send_message_to_multiparty())
 
 if __name__ == '__main__':
     web.run_app(app)

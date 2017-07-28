@@ -46,11 +46,11 @@ class IwantRequest(object):
 
     def store_iwant_task(self, activity) -> str:
         """Store to the database and get id -> Slack callback_id."""
-        callback_id = iwant_bot.pipeline.pipeline.add_activity_request(
+        storage_object = iwant_bot.pipeline.pipeline.add_activity_request(
             self.data['user_id'], activity, self.data['deadline'],
             self.data['action_start'], self.data['action_duration']
         )
-        return callback_id
+        return str(storage_object.id)
 
     def update_iwant_task(self, callback_id):
         pass

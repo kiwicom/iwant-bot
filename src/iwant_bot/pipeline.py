@@ -22,5 +22,5 @@ def choose_correct_store():
     return store
 
 
-pipeline.add_block("activity", request_acquisition.UIDAssigner())
-pipeline.add_block("activity", request_acquisition.Saver(choose_correct_store()))
+pipeline.add_block('activity', request_acquisition.UIDAssigner())
+pipeline.add_block('activity', request_acquisition.Saver(choose_correct_store()))

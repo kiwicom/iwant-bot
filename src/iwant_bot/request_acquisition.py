@@ -80,7 +80,7 @@ class PassThrough(AbstractBlock):
 
 class UIDAssigner(AbstractBlock):
     def pass_request(self, request):
-        request.id = uuid.uuid4()
+        request.id = str(uuid.uuid4())
         return request
 
 
