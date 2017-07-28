@@ -1,8 +1,22 @@
 import os
 
 import pytest
+import datetime
 
 from iwant_bot import storage, requests, storage_sqlalchemy
+
+
+NOW = datetime.datetime.now()
+TIME_1MIN = datetime.timedelta(minutes=1)
+
+
+def make_request_stacker(store):
+    def stack_request(uid, person, activity, args=(NOW, NOW + 5 * TIME_1MIN, 60 * 5)):
+        request = requests.IWantRequest(person, activity, * args)
+        request.id = uid
+        store.store_request(request)
+        return request
+    return stack_request
 
 
 def test_memory_storage_saves_and_restores():
@@ -12,9 +26,9 @@ def test_memory_storage_saves_and_restores():
 
 def storage_saves_and_restores(store):
     store.wipe_database()
-    request = requests.IWantRequest("john", "coffee", 0, 0, 0)
-    request.id = "an ID"
-    store.store_request(request)
+    stack = make_request_stacker(store)
+
+    request = stack("one", "john", "coffee")
     recovered_request = store.get_activity_requests()[0]
     assert request == recovered_request
     with pytest.raises(ValueError) as err:
@@ -58,45 +72,66 @@ def test_postgres_storage_removes(postgres_store):
     storage_removes(postgres_store)
 
 
+def test_memory_storage_resolves_and_fetches():
+    store = storage.MemoryRequestsStorage()
+    storage_resolves_and_fetches(store)
+
+
 def test_sqlite_storage_resloves():
     store = storage_sqlalchemy.SqlAlchemyRequestStorage("sqlite:///here.sqlite")
-    storage_resolves(store)
+    storage_resolves_and_fetches(store)
 
 
-def storage_resolves(store):
+@pytest.mark.skipif("POSTGRES_USER" not in os.environ,
+                    reason="Postgres container connection is not configured correctly")
+def test_postgres_storage_removes(postgres_store):
+    storage_resolves_and_fetches(postgres_store)
+
+
+def storage_resolves_and_fetches(store):
     store.wipe_database()
-    request = requests.IWantRequest("john", "coffee", 0, 0, 0)
-    request.id = "one"
-    store.store_request(request)
+    stack = make_request_stacker(store)
 
-    request = requests.IWantRequest("john", "coffee", 0, 0, 0)
-    request.id = "foo"
-    store.store_request(request)
+    stack("one", "john", "coffee")
+    stack("two", "john", "coffee")
+    stack("three", "john", "coffee")
 
-    store.resolve_requests(["one", "foo"])
+    store.resolve_requests(["one", "two"])
     resolved_requests = store.get_activity_requests("coffee")
-    result_id = resolved_requests[0].resolved_by
-    assert result_id is not None
-    assert result_id == resolved_requests[1].resolved_by
+    resolved_requests = list(filter(lambda r: r.id in ("one", "two"), resolved_requests))
+    coffee_result_id = resolved_requests[0].resolved_by
+    assert coffee_result_id is not None
+    assert coffee_result_id == resolved_requests[1].resolved_by
 
-    request = requests.IWantRequest("john", "coffee", 0, 0, 0)
-    request.id = "bar"
-    store.store_request(request)
-
-    store.resolve_requests(["one", "foo", "bar"])
+    store.resolve_requests(["one", "two", "three"])
     resolved_requests = store.get_activity_requests("coffee")
     for req in resolved_requests:
-        assert req.resolved_by == result_id
+        assert req.resolved_by == coffee_result_id
+
+    picnic_one = stack("four", "jack", "picnic")
+    picnic_two = stack("five", "anna", "picnic")
+    store.resolve_requests(["four", "five"])
+
+    resolved_requests = store.get_activity_requests("picnic")
+    picnic_result_id = resolved_requests[0].resolved_by
+    assert picnic_result_id is not None
+    assert picnic_result_id == resolved_requests[1].resolved_by
+    assert picnic_result_id != coffee_result_id
+
+    requests = store.get_requests_of_result(picnic_result_id)
+    assert len(requests) == 2
+    picnic_one.resolved_by = picnic_two.resolved_by = picnic_result_id
+    assert picnic_one in requests
+    assert picnic_two in requests
 
 
 def storage_removes(store):
     store.wipe_database()
-    request = requests.IWantRequest("john", "coffee", 0, 0, 0)
-    request.id = "one"
-    store.store_request(request)
-    request = requests.IWantRequest("john", "coffee", 0, 0, 0)
-    request.id = "foo"
-    store.store_request(request)
+    stack = make_request_stacker(store)
+
+    stack("one", "john", "coffee")
+    stack("foo", "john", "coffee")
+
     with pytest.raises(AssertionError):
         store.remove_activity_request("bar", "jack")
     with pytest.raises(AssertionError):
@@ -105,9 +140,43 @@ def storage_removes(store):
     assert len(store.get_activity_requests()) == 1
 
 
+def test_memory_storage_understands_time():
+    store = storage.MemoryRequestsStorage()
+    storage_understands_time(store)
+
+
+def test_sqlite_storage_understands_time():
+    store = storage_sqlalchemy.SqlAlchemyRequestStorage("sqlite:///here.sqlite")
+    storage_understands_time(store)
+
+
+def storage_understands_time(store):
+    store.wipe_database()
+    stack = make_request_stacker(store)
+
+    stack("one", "john", "coffee", (NOW + TIME_1MIN * 0.8, NOW, 0))
+    stack("two", "janine", "tea", (NOW + TIME_1MIN, NOW, 0))
+    stack("three", "paul", "wine", (NOW + TIME_1MIN * 1.2, NOW, 0))
+
+    expiring_requests = store.get_requests_by_deadline_proximity(NOW, 58)
+    assert len(expiring_requests) == 1
+    expiring_requests.pop().id == "one"
+
+    expiring_requests = store.get_requests_by_deadline_proximity(NOW, 65)
+    assert len(expiring_requests) == 2
+    for req in expiring_requests:
+        assert req.id in ("one", "two")
+
+
 def test_memory_storage_filters_activities():
     store = storage.MemoryRequestsStorage()
     storage_filters_activities(store)
+
+
+@pytest.mark.skipif("POSTGRES_USER" not in os.environ,
+                    reason="Postgres container connection is not configured correctly")
+def test_postgres_storage_understands_time(postgres_store):
+    storage_understands_time(postgres_store)
 
 
 def test_sqlite_storage_filters_activities():
@@ -123,15 +192,11 @@ def test_postgres_storage_filters_activities(postgres_store):
 
 def storage_filters_activities(store):
     store.wipe_database()
-    request = requests.IWantRequest("john", "coffee", 1, 0, 0)
-    request.id = "1"
-    store.store_request(request)
-    request = requests.IWantRequest("jack", "coffee", 6, 0, 0)
-    request.id = "2"
-    store.store_request(request)
-    request = requests.IWantRequest("jane", "tea", 2, 0, 0)
-    request.id = "3"
-    store.store_request(request)
+    stack = make_request_stacker(store)
+
+    stack("1", "john", "coffee")
+    stack("2", "jack", "coffee")
+    stack("3", "jane", "tea")
 
     recovered_tea_requests = store.get_activity_requests("tea")
     assert len(recovered_tea_requests) == 1

@@ -5,9 +5,10 @@ COPY requirements.txt app/
 RUN pip install gunicorn pytest
 
 RUN apt-get update \
-	&& DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends gcc build-essential \
+	&& DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends gcc build-essential \
 	&& pip install -r /app/requirements.txt \
-	&& DEBIAN_FRONTEND=noninteractive apt-get remove -y gcc build-essential \
+	&& DEBIAN_FRONTEND=noninteractive apt-get -y remove gcc build-essential \
+	&& DEBIAN_FRONTEND=noninteractive apt-get -y autoremove \
 	&& rm -rf /var/lib/apt/lists
 
 ARG timezone

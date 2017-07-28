@@ -2,7 +2,7 @@ import abc
 import uuid
 import collections
 
-from iwant_bot import requests
+from . import requests
 
 
 class RequestPreprocessingPipeline(object):
@@ -21,6 +21,7 @@ class RequestPreprocessingPipeline(object):
             if chained_request is None:
                 break
             chained_request = block.pass_request(chained_request)
+        return chained_request
 
     def add_cancellation_request(self, person_id, cancelling_request_id):
         chained_request = requests.CancellationRequest(person_id, cancelling_request_id)
@@ -104,3 +105,6 @@ class Canceller(AbstractBlock):
             # it is not a big deal
             pass
         return request
+
+
+input_pipeline = RequestPreprocessingPipeline()
