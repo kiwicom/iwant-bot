@@ -1,8 +1,11 @@
 import time
 import typing
+import enum
+import datetime
 
 
-class Status(object):
+@enum.unique
+class Status(enum.Enum):
     PENDING = 0
     INVALID = 1
     DONE = 2
@@ -80,6 +83,6 @@ class CancellationRequest(Request):
 
 
 class Result(object):
-    def __init__(self, requests_ids: typing.List[str], effective_time):
+    def __init__(self, requests_ids: typing.List[str], deadline: datetime.datetime):
         self.requests_ids = requests_ids
-        self.effective_time = effective_time
+        self.deadline = deadline

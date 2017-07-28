@@ -222,9 +222,9 @@ class MemoryResultsStorage(ResultsStorage):
         return self._cathegory_storage[request_id]
 
     def get_results_past(self, time):
-        def request_is_effective(req): return req.effective_time > time
+        def request_is_effective(req): return req.deadline > time
         results_past_time = filter(request_is_effective, list(self._all_results))
-        results_past_time = sorted(results_past_time, key=lambda req: req.effective_time)
+        results_past_time = sorted(results_past_time, key=lambda req: req.deadline)
         return results_past_time
 
     def _pop_result(self, result):
