@@ -70,8 +70,13 @@ class Result(RequestsBase):
     __tablename__ = 'results'
 
     id = Column(Integer, primary_key=True, unique=True, autoincrement=True)
+    deadline = Column(DateTime)
+
+    def toResult(self, requests_ids):
+        result = requests.Result(
+            self.id, requests_ids, self.deadline)
+        return result
     # notification_status
-    # deadline
 
 
 class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
@@ -131,6 +136,8 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
                 resolved_by = self._create_result()
             for record in all_results:
                 record.resolved_by = resolved_by
+        self._update_result_deadline(resolved_by)
+        return resolved_by
 
     def get_requests_of_result(self, result_id):
         with self.session_scope() as session:
@@ -140,6 +147,24 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
             )
             result = [record.toIWantRequest(record.person_id)
                       for record in query_results.all()]
+        return result
+
+    def get_result(self, result_id):
+        with self.session_scope() as session:
+            query_results = (
+                session.query(IWantRequest)
+                .filter(IWantRequest.resolved_by == result_id)
+            )
+            requests_ids = {req.id for req in query_results.all()}
+            result = self._get_result_object(session, result_id).toResult(requests_ids)
+        return result
+
+    def _get_result_object(self, session, result_id):
+        query_results = (
+            session.query(Result)
+            .filter(Result.id == result_id)
+        )
+        result = query_results.first()
         return result
 
     def get_requests_by_deadline_proximity(self, deadline, time_proximity):
@@ -165,3 +190,13 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
         result_id = result.id
         session.close()
         return result_id
+
+    def _update_result_deadline(self, result_id):
+        with self.session_scope() as session:
+            query_results = (
+                session.query(IWantRequest.deadline)
+                .filter(IWantRequest.resolved_by == result_id)
+                .order_by(IWantRequest.deadline.asc())
+            )
+            result_object = self._get_result_object(session, result_id)
+            result_object.deadline = query_results.first()[0]

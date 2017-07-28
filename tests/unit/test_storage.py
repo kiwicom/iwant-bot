@@ -117,6 +117,9 @@ def storage_resolves_and_fetches(store):
     assert picnic_result_id is not None
     assert picnic_result_id == resolved_requests[1].resolved_by
     assert picnic_result_id != coffee_result_id
+    result = store.get_result(picnic_result_id)
+    assert "four" in result.requests_ids
+    assert "five" in result.requests_ids
 
     requests = store.get_requests_of_result(picnic_result_id)
     assert len(requests) == 2
@@ -154,7 +157,8 @@ def storage_understands_time(store):
     store.wipe_database()
     stack = make_request_stacker(store)
 
-    stack("one", "john", "coffee", (NOW + TIME_1MIN * 0.8, NOW, 0))
+    early_deadline = NOW + TIME_1MIN * 0.8
+    stack("one", "john", "coffee", (early_deadline, NOW, 0))
     stack("two", "janine", "tea", (NOW + TIME_1MIN, NOW, 0))
     stack("three", "paul", "wine", (NOW + TIME_1MIN * 1.2, NOW, 0))
 
@@ -166,6 +170,10 @@ def storage_understands_time(store):
     assert len(expiring_requests) == 2
     for req in expiring_requests:
         assert req.id in ("one", "two")
+
+    result_id = store.resolve_requests(["one", "two"])
+    result = store.get_result(result_id)
+    assert result.deadline == early_deadline
 
 
 def test_memory_storage_filters_activities():
@@ -221,9 +229,9 @@ def test_task_queue():
 
 def test_results_storage():
     store = storage.MemoryResultsStorage()
-    late_result = requests.Result(["3"], 2)
+    late_result = requests.Result(0, ["3"], 2)
     store.store_result(late_result)
-    early_result = requests.Result(["1", "2"], 1)
+    early_result = requests.Result(1, ["1", "2"], 1)
     store.store_result(early_result)
     returned_result = store.get_results_concerning_request("1")
     assert early_result == returned_result
