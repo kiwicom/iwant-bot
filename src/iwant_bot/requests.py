@@ -83,6 +83,7 @@ class CancellationRequest(Request):
 
 
 class Result(object):
-    def __init__(self, requests_ids: typing.List[str], deadline: datetime.datetime):
+    def __init__(self, uid, requests_ids: set, deadline: datetime.datetime):
+        self.id = uid
         self.requests_ids = requests_ids
         self.deadline = deadline
