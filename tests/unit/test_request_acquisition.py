@@ -64,10 +64,14 @@ def test_notifier(pipeline):
 def test_breaker(pipeline):
     requests = []
     add_noop(pipeline)
+    add_uid_assigner(pipeline)
     add_breaker(pipeline)
     add_notifier(pipeline, requests)
-    pipeline.add_activity_request('john', 'coffee', 5, 0, 0)
+    created_request = pipeline.add_activity_request('john', 'coffee', 5, 0, 0)
     assert len(requests) == 0
+    assert created_request is not None
+    assert created_request.id is not None
+    assert created_request.person_id == "john"
 
 
 def test_uid_assigner(pipeline):
@@ -75,8 +79,10 @@ def test_uid_assigner(pipeline):
     add_uid_assigner(pipeline)
     add_notifier(pipeline, requests)
     pipeline.add_activity_request('john', 'coffee', 5, 0, 0)
-    pipeline.add_activity_request('john', 'coffee', 5, 0, 0)
+    created_request = pipeline.add_activity_request('jack', 'coffee', 5, 0, 0)
     assert requests[0].id != requests[1].id
+    assert created_request.person_id == "jack"
+    assert created_request.id == requests[-1].id
 
 
 def test_saver(pipeline):

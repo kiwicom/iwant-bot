@@ -12,15 +12,17 @@ class RequestPreprocessingPipeline(object):
     def add_block(self, request_type, block):
         self._blocks[request_type].append(block)
 
+    # TODO: Restructure the code to be more understandable
     def add_activity_request(
             self, person_id, activity, deadline,
             activity_start, activity_end):
-        chained_request = requests.IWantRequest(
+        new_chained_request = chained_request = requests.IWantRequest(
             person_id, activity, deadline, activity_start, activity_end)
         for block in self._blocks['activity']:
-            if chained_request is None:
-                break
-            chained_request = block.pass_request(chained_request)
+            if new_chained_request is None:
+                return chained_request
+            chained_request = new_chained_request
+            new_chained_request = block.pass_request(chained_request)
         return chained_request
 
     def add_cancellation_request(self, person_id, cancelling_request_id):
