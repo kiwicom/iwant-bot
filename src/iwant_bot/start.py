@@ -3,6 +3,7 @@ from aiohttp import web
 from os import getenv
 import re
 import time
+import json
 from iwant_bot.slack_communicator import SlackCommunicator
 from iwant_bot.iwant_process import IwantRequest
 
@@ -61,6 +62,28 @@ def multidict_to_dict(multidict) -> dict:
     return {key: multidict[key] for key in multidict}
 
 
+async def handle_slack_button(request):
+    payload = multidict_to_dict(await request.post())
+    body = json.loads(payload['payload'])
+    print(f'INFO: Button request body:\n{body}.')
+
+    try:
+        verify_request_token(body)
+    except (KeyError, TokenError) as err:
+        print(f'INFO: Invalid token: {err}')
+        return web.json_response({'text': 'Unverified message.'})
+
+    if body['actions'][0]['name'] == 'Cancel':
+        if 'text' not in body:
+            body['text'] = ''
+        if 'user_id' not in body:
+            body['user_id'] = body['user']['id']
+        iwant_object = IwantRequest(body, (), (), _slack_user_pattern)
+        iwant_object.cancel_iwant_task()
+
+    return web.json_response({'text': 'Request was cancelled.'})
+
+
 async def handle_slack_iwant(request):
     body = multidict_to_dict(await request.post())
     body['incoming_ts'] = time.time()
@@ -83,12 +106,12 @@ async def handle_slack_iwant(request):
     print(f'INFO: iwant parsed request:\n{iwant_object.data}')
 
     # Process behests
-    res = handle_slack_iwant_behest(iwant_object)
+    res = solve_iwant_behest(iwant_object)
     if res is not None:
         return web.json_response(res)
 
     # If no behest, then resolve activities
-    return web.json_response(handle_slack_iwant_command(iwant_object))
+    return web.json_response(solve_iwant_activity(iwant_object))
 
 
 def complain(what: str, iwant_object) -> dict:
@@ -104,7 +127,7 @@ def complain(what: str, iwant_object) -> dict:
     return {'text': f'You can use only one {what} from {listing} at the same time.'}
 
 
-def handle_slack_iwant_behest(iwant_object) -> dict or None:
+def solve_iwant_behest(iwant_object) -> dict or None:
     if len(iwant_object.data['behests']) == 1:
         print(f"INFO: iwant request found behest '{iwant_object.data['behests'][0]}'.")
         if iwant_object.data['behests'] == ['list']:
@@ -122,7 +145,7 @@ def handle_slack_iwant_behest(iwant_object) -> dict or None:
         return None
 
 
-def handle_slack_iwant_command(iwant_object) -> dict:
+def solve_iwant_activity(iwant_object) -> dict:
     if len(iwant_object.data['activities']) == 1:
         print(f'INFO: iwant request found activities {iwant_object.data["activities"][0]}.')
 
@@ -154,6 +177,7 @@ def verify_request_token(body: dict) -> None:
 app = web.Application()
 app.router.add_get(r'/{get:\w*}', handle_get)
 app.router.add_post('/slack/iwant', handle_slack_iwant)
+app.router.add_post('/slack/button', handle_slack_button)
 app.router.add_post(r'/{post:[\w/]*}', handle_other_posts)
 
 loop = asyncio.get_event_loop()
@@ -169,15 +193,15 @@ loop = asyncio.get_event_loop()
 
 
 # sent_message_to_each can send message even to channels and users
-# test1 = SlackCommunicator(BOT_TOKEN, 'G64LXGDPC', 'Message 42.')
-# loop.run_until_complete(test1.send_message_to_each())
+test1 = SlackCommunicator(BOT_TOKEN, 'U52FUHD98', 'Initial message.')
+loop.run_until_complete(test1.send_message_to_each())
 
 
 # sent message to multiparty group of 2 to 7 people (+ 1 iwant-bot). Need BOT_TOKEN.
 # So, this is preferable variant...
 
-test2 = SlackCommunicator(BOT_TOKEN, ['U51RKKATS', 'U52FUHD98', 'U52FU3ZTL'], 'Sorry spam :).')
-loop.run_until_complete(test2.send_message_to_multiparty())
+# test2 = SlackCommunicator(BOT_TOKEN, ['U51RKKATS', 'U52FUHD98', 'U52FU3ZTL'], 'Sorry spam :).')
+# loop.run_until_complete(test2.send_message_to_multiparty())
 
 if __name__ == '__main__':
     web.run_app(app)

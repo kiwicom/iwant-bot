@@ -15,20 +15,23 @@ class RequestPreprocessingPipeline(object):
     def add_activity_request(
             self, person_id, activity, deadline,
             activity_start, activity_end):
-        chained_request = requests.IWantRequest(
+        request = requests.IWantRequest(
             person_id, activity, deadline, activity_start, activity_end)
-        for block in self._blocks['activity']:
-            if chained_request is None:
-                break
-            chained_request = block.pass_request(chained_request)
+        return self._add_a_request(request, 'activity')
+
+    # TODO: Restructure the code to be more understandable
+    def _add_a_request(self, request, cathegory):
+        new_chained_request = chained_request = request
+        for block in self._blocks[cathegory]:
+            if new_chained_request is None:
+                return chained_request
+            chained_request = new_chained_request
+            new_chained_request = block.pass_request(chained_request)
         return chained_request
 
     def add_cancellation_request(self, person_id, cancelling_request_id):
-        chained_request = requests.CancellationRequest(person_id, cancelling_request_id)
-        for block in self._blocks['cancel']:
-            if chained_request is None:
-                break
-            chained_request = block.pass_request(chained_request)
+        request = requests.CancellationRequest(person_id, cancelling_request_id)
+        return self._add_a_request(request, 'cancel')
 
 
 class AbstractBlock(abc.ABC):
@@ -78,7 +81,7 @@ class PassThrough(AbstractBlock):
 
 class UIDAssigner(AbstractBlock):
     def pass_request(self, request):
-        request.id = uuid.uuid4()
+        request.id = str(uuid.uuid4())
         return request
 
 

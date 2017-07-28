@@ -1,6 +1,7 @@
 from dateparser import parse
 from datetime import datetime, timedelta
 import re
+import iwant_bot.pipeline
 
 
 class IwantRequest(object):
@@ -34,7 +35,7 @@ class IwantRequest(object):
         if max_duration is not None:
             self.data['action_duration'] = min(self.data['action_duration'], max_duration)
         if 'callback_id' not in self.data:
-            self.data['callback_id'] = []
+            self.data['callback_id'] = ''
 
     def return_list_of_parameters(self) -> dict:
         text = 'Available activities are:\n`'\
@@ -45,15 +46,17 @@ class IwantRequest(object):
 
     def store_iwant_task(self, activity) -> str:
         """Store to the database and get id -> Slack callback_id."""
-        # callback_id = RequestPreprocessingPipelineObject.add_activity_request(
-        #     self.data['user_id'], activity, self.data['deadline'],
-        #     self.data['action_start'], self.data['action_duration']
-        # )
-        callback_id = f'id-1234-{activity}'  # temporary
-        return callback_id
+        storage_object = iwant_bot.pipeline.pipeline.add_activity_request(
+            self.data['user_id'], activity, self.data['deadline'],
+            self.data['action_start'], self.data['action_duration']
+        )
+        return storage_object.id
 
-    def update_iwant_task(self, callback_id):
-        pass
+    def cancel_iwant_task(self):
+        print(f'INFO: Canceling request of user {self.data["user_id"]}'
+              f' with uuid {self.data["callback_id"]}.')
+        iwant_bot.pipeline.pipeline.add_cancellation_request(
+            self.data['user_id'], self.data['callback_id'])
 
     def create_accepted_response(self) -> dict:
         """Create confirmation text and the cancel button."""

@@ -58,14 +58,23 @@ class RequestStorage(abc.ABC):
     def get_requests_of_result(self, result_id):
         pass
 
+    @abc.abstractmethod
+    def get_result(self, result_id) -> requests.Result:
+        pass
+
+    @abc.abstractmethod
+    def _update_result_deadline(self, result_id):
+        pass
+
 
 # TODO: Remove -> Invalidate
 # store results ID of the result the request is solved by.
 class MemoryRequestsStorage(RequestStorage):
     def __init__(self):
+        self._results_by_id = dict()
         self._all_requests = set()
         self._requests_by_id = dict()
-        self._results = collections.defaultdict(set)
+        self._requests_by_result_id = collections.defaultdict(set)
 
         self._result_counter = 0
 
@@ -75,7 +84,8 @@ class MemoryRequestsStorage(RequestStorage):
             if request.id is not None:
                 self._requests_by_id[request.id] = request
             if request.resolved_by is not None:
-                self._results[request.resolved_by].add(request)
+                self._requests_by_result_id[request.resolved_by].add(request)
+                self._results_by_id[request.resolved_by].requests_ids.add(request.id)
         else:
             raise ValueError(f"Can't store requests of type {type(request)}.")
 
@@ -103,10 +113,12 @@ class MemoryRequestsStorage(RequestStorage):
         self._requests_by_id.pop(request_id)
         self._all_requests.discard(request)
         if request.resolved_by is not None:
-            self._results[request.resolved_by].discard(request)
+            self._requests_by_result_id[request.resolved_by].discard(request)
 
     def _create_result(self):
         self._result_counter += 1
+        self._results_by_id[self._result_counter] = requests.Result(
+            self._result_counter, set(), None)
         return self._result_counter
 
     def wipe_database(self):
@@ -127,9 +139,17 @@ class MemoryRequestsStorage(RequestStorage):
             self._remove_request_by_id(request.id)
             request.resolved_by = resolved_by
             self.store_request(request)
+        self._update_result_deadline(resolved_by)
+        return resolved_by
 
     def get_requests_of_result(self, result_id):
-        return self._results[result_id]
+        return self._requests_by_result_id[result_id]
+
+    def _update_result_deadline(self, result_id):
+        result = self.get_result(result_id)
+        requests_deadlines = [req.deadline for req
+                              in self._requests_by_result_id[result_id]]
+        result.deadline = min(requests_deadlines)
 
     def get_requests_by_deadline_proximity(self, deadline, time_proximity):
         time_start = deadline
@@ -139,6 +159,9 @@ class MemoryRequestsStorage(RequestStorage):
             if time_start < req.deadline < time_end:
                 result.add(req)
         return result
+
+    def get_result(self, result_id):
+        return self._results_by_id[result_id]
 
 
 class TaskQueue(abc.ABC):
