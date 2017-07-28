@@ -3,6 +3,7 @@ from aiohttp import web
 from os import getenv
 import re
 import time
+import json
 from iwant_bot.slack_communicator import SlackCommunicator
 from iwant_bot.iwant_process import IwantRequest
 
@@ -59,6 +60,28 @@ def multidict_to_dict(multidict) -> dict:
         print('WARNING: MultiDict contains duplicate keys, last occurrence was used.')
         print(multidict)
     return {key: multidict[key] for key in multidict}
+
+
+async def handle_slack_button(request):
+    payload = multidict_to_dict(await request.post())
+    body = json.loads(payload['payload'])
+    print(f'INFO: Button request body:\n{body}.')
+
+    try:
+        verify_request_token(body)
+    except (KeyError, TokenError) as err:
+        print(f'INFO: Invalid token: {err}')
+        return web.json_response({'text': 'Unverified message.'})
+
+    if body['actions'][0]['name'] == 'Cancel':
+        if 'text' not in body:
+            body['text'] = ''
+        if 'user_id' not in body:
+            body['user_id'] = body['user']['id']
+        iwant_object = IwantRequest(body, (), (), _slack_user_pattern)
+        iwant_object.cancel_iwant_task()
+
+    return web.json_response({'text': 'Request was cancelled.'})
 
 
 async def handle_slack_iwant(request):
@@ -154,6 +177,7 @@ def verify_request_token(body: dict) -> None:
 app = web.Application()
 app.router.add_get(r'/{get:\w*}', handle_get)
 app.router.add_post('/slack/iwant', handle_slack_iwant)
+app.router.add_post('/slack/button', handle_slack_button)
 app.router.add_post(r'/{post:[\w/]*}', handle_other_posts)
 
 loop = asyncio.get_event_loop()

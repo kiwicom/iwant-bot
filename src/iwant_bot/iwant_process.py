@@ -35,7 +35,7 @@ class IwantRequest(object):
         if max_duration is not None:
             self.data['action_duration'] = min(self.data['action_duration'], max_duration)
         if 'callback_id' not in self.data:
-            self.data['callback_id'] = []
+            self.data['callback_id'] = ''
 
     def return_list_of_parameters(self) -> dict:
         text = 'Available activities are:\n`'\
@@ -50,10 +50,13 @@ class IwantRequest(object):
             self.data['user_id'], activity, self.data['deadline'],
             self.data['action_start'], self.data['action_duration']
         )
-        return str(storage_object.id)
+        return storage_object.id
 
-    def update_iwant_task(self, callback_id):
-        pass
+    def cancel_iwant_task(self):
+        print(f'INFO: Canceling request of user {self.data["user_id"]}'
+              f' with uuid {self.data["callback_id"]}.')
+        iwant_bot.pipeline.pipeline.add_cancellation_request(
+            self.data['user_id'], self.data['callback_id'])
 
     def create_accepted_response(self) -> dict:
         """Create confirmation text and the cancel button."""
