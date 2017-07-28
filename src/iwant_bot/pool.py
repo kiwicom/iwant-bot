@@ -1,6 +1,7 @@
 import collections
 import itertools
 from iwant_bot.ignore import IgnoreList
+from bot_worker.celery import worker
 
 
 class RequestsPool(object):
@@ -44,6 +45,7 @@ class RequestsPool(object):
             elif req not in destination:
                 destination.append(req)
 
+    @worker.task()
     def make_groups(self, activity, group_of=2):
         requests = set(self.req_by_activities[activity])
         destination = self.pairs[activity]

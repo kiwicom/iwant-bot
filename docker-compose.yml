@@ -18,6 +18,25 @@ services:
      - .:/app
     ports:
      - "8080:80"
+
+  redis:
+    image: redis:latest
+    ports:
+        - "6379:6379"
+    environment:
+      TZ: "Europe/Prague"
+
+  worker:
+    build:
+      context: .
+    command: celery -A bot_worker worker --loglevel=info --beat --autoscale=20,0
+    volumes:
+      - .:/app
+    links:
+      - redis
+    depends_on:
+      - redis
+ 
   postgres:
     image: "postgres:9.6-alpine"
     environment:
