@@ -21,6 +21,7 @@ def choose_correct_store():
             f"postgresql+psycopg2://{username}:{password}@postgres/{username}")
     return store
 
+
 chosen_storage = choose_correct_store()
 pipeline.add_block('activity', request_acquisition.UIDAssigner())
 pipeline.add_block('activity', request_acquisition.Saver(chosen_storage))
