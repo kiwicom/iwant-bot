@@ -167,9 +167,9 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
         result = query_results.first()
         return result
 
-    def get_requests_by_deadline_proximity(self, deadline, time_proximity):
-        time_start = deadline
-        time_end = time_start + datetime.timedelta(seconds=time_proximity)
+    def get_requests_by_deadline_proximity(self, deadline, time_buffer_in_seconds):
+        time_end = deadline
+        time_start = time_end - datetime.timedelta(seconds=time_buffer_in_seconds)
         with self.session_scope() as session:
             query_results = (
                 session.query(IWantRequest)
@@ -177,6 +177,19 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
                 .filter(IWantRequest.deadline < time_end)
             )
             result = [record.toIWantRequest(record.person_id)
+                      for record in query_results.all()]
+        return result
+
+    def get_results_by_deadline_proximity(self, deadline, time_buffer_in_seconds):
+        time_end = deadline
+        time_start = time_end - datetime.timedelta(seconds=time_buffer_in_seconds)
+        with self.session_scope() as session:
+            query_results = (
+                session.query(Result)
+                .filter(Result.deadline > time_start)
+                .filter(Result.deadline < time_end)
+            )
+            result = [record.Result(self.get_requests_of_result(record.id))
                       for record in query_results.all()]
         return result
 

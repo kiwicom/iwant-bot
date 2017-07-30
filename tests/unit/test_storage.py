@@ -158,22 +158,23 @@ def storage_understands_time(store):
     stack = make_request_stacker(store)
 
     early_deadline = NOW + TIME_1MIN * 0.8
+    mid_deadline = NOW + TIME_1MIN
     stack("one", "john", "coffee", (early_deadline, NOW, 0))
-    stack("two", "janine", "tea", (NOW + TIME_1MIN, NOW, 0))
+    stack("two", "janine", "tea", (mid_deadline, NOW, 0))
     stack("three", "paul", "wine", (NOW + TIME_1MIN * 1.2, NOW, 0))
 
-    expiring_requests = store.get_requests_by_deadline_proximity(NOW, 58)
+    expiring_requests = store.get_requests_by_deadline_proximity(NOW + 2 * TIME_1MIN, 58)
     assert len(expiring_requests) == 1
-    expiring_requests.pop().id == "one"
+    expiring_requests.pop().id == "three"
 
-    expiring_requests = store.get_requests_by_deadline_proximity(NOW, 65)
+    expiring_requests = store.get_requests_by_deadline_proximity(NOW + 2 * TIME_1MIN, 62)
     assert len(expiring_requests) == 2
     for req in expiring_requests:
-        assert req.id in ("one", "two")
+        assert req.id in ("three", "two")
 
-    result_id = store.resolve_requests(["one", "two"])
+    result_id = store.resolve_requests(["three", "two"])
     result = store.get_result(result_id)
-    assert result.deadline == early_deadline
+    assert result.deadline == mid_deadline
 
 
 def test_memory_storage_filters_activities():

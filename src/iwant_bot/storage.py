@@ -51,7 +51,11 @@ class RequestStorage(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_requests_by_deadline_proximity(self, deadline, time_proximity):
+    def get_requests_by_deadline_proximity(self, deadline, time_buffer_in_seconds):
+        pass
+
+    @abc.abstractmethod
+    def get_results_by_deadline_proximity(self, deadline, time_proximity):
         pass
 
     @abc.abstractmethod
@@ -151,14 +155,26 @@ class MemoryRequestsStorage(RequestStorage):
                               in self._requests_by_result_id[result_id]]
         result.deadline = min(requests_deadlines)
 
-    def get_requests_by_deadline_proximity(self, deadline, time_proximity):
-        time_start = deadline
-        time_end = time_start + datetime.timedelta(seconds=time_proximity)
+    def _get_item_by_deadline_proximity(self, container, deadline, time_proximity):
+        time_end = deadline
+        time_start = time_end - datetime.timedelta(seconds=time_proximity)
         result = set()
-        for req in self._all_requests:
+        for req in container:
             if time_start < req.deadline < time_end:
                 result.add(req)
         return result
+
+    def get_requests_by_deadline_proximity(self, deadline, time_buffer_in_seconds):
+        return self._get_item_by_deadline_proximity(self._all_requests, deadline, time_buffer_in_seconds)
+
+    def get_results_by_deadline_proximity(self, deadline, time_proximity):
+        results = self._get_item_by_deadline_proximity(
+            self._results_by_id.values(), deadline, time_proximity)
+        results = filter(
+            lambda res: res.status in (requests.Status.PENDING, requests.Status.FRESH),
+            results
+        )
+        return results
 
     def get_result(self, result_id):
         return self._results_by_id[result_id]
