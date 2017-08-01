@@ -147,6 +147,37 @@ def storage_removes(store):
     assert store.get_result(removed_result_id).status == requests.Status.INVALID
 
 
+def storage_removes_resolved_requests(store):
+    store.wipe_database()
+    stack = make_request_stacker(store)
+
+    first_result_id = stack("one", "john", "coffee").resolved_by
+    second_result_id = stack("foo", "john", "coffee").resolved_by
+    result_ids = {first_result_id, second_result_id}
+    assert len(result_ids) == 2
+
+    result_id = store.resolve_requests(["one", "foo"])
+    assert result_id in result_ids
+    purged_result_id = result_ids - {result_id, }
+    assert store.get_result(purged_result_id.pop()).status == requests.Status.INVALID
+
+
+def test_memory_storage_removes_resolved_requests():
+    store = storage.MemoryRequestsStorage()
+    storage_removes_resolved_requests(store)
+
+
+def test_sqlite_storage_removes_resolved_requests():
+    store = storage_sqlalchemy.SqlAlchemyRequestStorage("sqlite:///here.sqlite")
+    storage_removes_resolved_requests(store)
+
+
+@pytest.mark.skipif("POSTGRES_USER" not in os.environ,
+                    reason="Postgres container connection is not configured correctly")
+def test_postgres_storage_removes_resolved_requests(postgres_store):
+    storage_removes_resolved_requests(postgres_store)
+
+
 def test_memory_storage_understands_time():
     store = storage.MemoryRequestsStorage()
     storage_understands_time(store)

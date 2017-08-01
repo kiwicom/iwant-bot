@@ -57,9 +57,9 @@ class IWantRequest(Request):
 
     resolved_by = Column(Integer, ForeignKey("results.id"))
 
-    def toIWantRequest(self, person_id=None):
+    def toIWantRequest(self):
         result = requests.IWantRequest(
-            person_id, self.activity, self.deadline,
+            self.person_id, self.activity, self.deadline,
             self.activity_start, self.activity_duration)
         result.id = self.id
         result.resolved_by = self.resolved_by
@@ -112,7 +112,7 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
             if activity is not None:
                 query_results = query_results.filter(
                     IWantRequest.activity == activity)
-            result = [record.toIWantRequest(base.person_id)
+            result = [record.toIWantRequest()
                       for base, record in query_results.all()]
         return result
 
@@ -124,7 +124,24 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
             )
             all_results = query_results.all()
             assert len(all_results) == 1
-            session.delete(all_results[0])
+            request_to_delete = all_results[0]
+            session.delete(request_to_delete)
+
+        concerned_result_id = request_to_delete.resolved_by
+        self.__update_result_status(concerned_result_id)
+
+    def __update_result_status(self, result_id):
+        with self.session_scope() as session:
+            query_results = (
+                session.query(IWantRequest)
+                .filter(IWantRequest.resolved_by == result_id)
+            )
+
+            requests_of_the_same_result = [req.toIWantRequest()
+                                           for req in query_results.all()]
+        with self.session_scope() as session:
+            result_obj = self._get_result_object(session, result_id)
+            self._update_result_status(result_obj, requests_of_the_same_result)
 
     def resolve_requests(self, requests_ids):
         with self.session_scope() as session:
@@ -135,13 +152,16 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
             resolved_by = None
             all_results = query_results.all()
             assert len(all_results) > 1
-            for record in all_results:
-                if record.resolved_by is not None:
-                    resolved_by = record.resolved_by
-            if resolved_by is None:
-                resolved_by = self._create_result()
+            result_objs = [self._get_result_object(session, req.resolved_by)
+                           for req in all_results]
+            involved_result_ids = [result.id for result in result_objs]
+            resolved_by = self._find_fitting_result_id(result_objs)
             for record in all_results:
                 record.resolved_by = resolved_by
+
+        with self.session_scope() as session:
+            for involved_id in involved_result_ids:
+                self.__update_result_status(involved_id)
         self._update_result_deadline(resolved_by)
         return resolved_by
 
@@ -151,7 +171,7 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
                 session.query(IWantRequest)
                 .filter(IWantRequest.resolved_by == result_id)
             )
-            result = [record.toIWantRequest(record.person_id)
+            result = [record.toIWantRequest()
                       for record in query_results.all()]
         return result
 
@@ -182,7 +202,7 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
                 .filter(IWantRequest.deadline > time_start)
                 .filter(IWantRequest.deadline < time_end)
             )
-            result = [record.toIWantRequest(record.person_id)
+            result = [record.toIWantRequest()
                       for record in query_results.all()]
         return result
 
@@ -218,4 +238,6 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
                 .order_by(IWantRequest.deadline.asc())
             )
             result_object = self._get_result_object(session, result_id)
+            if result_object.status == requests.Status.INVALID:
+                return
             result_object.deadline = query_results.first()[0]
