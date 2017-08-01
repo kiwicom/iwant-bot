@@ -70,6 +70,16 @@ class RequestStorage(abc.ABC):
     def _update_result_deadline(self, result_id):
         pass
 
+    def _update_result_status(self, result_id, concerned_requests):
+        result = self.get_result(result_id)
+        if len(concerned_requests) == 1:
+            result.status = requests.Status.PENDING
+        elif len(concerned_requests) > 1:
+            result.status = requests.Status.FRESH
+        elif len(concerned_requests) == 0:
+            result.status = requests.Status.INVALID
+
+
 
 # TODO: Remove -> Invalidate
 # store results ID of the result the request is solved by.
@@ -90,8 +100,12 @@ class MemoryRequestsStorage(RequestStorage):
             if request.resolved_by is not None:
                 self._requests_by_result_id[request.resolved_by].add(request)
                 self._results_by_id[request.resolved_by].requests_ids.add(request.id)
+            else:
+                resolved_by = self._create_result()
+                request.resolved_by = resolved_by
         else:
             raise ValueError(f"Can't store requests of type {type(request)}.")
+        return request
 
     def get_activity_requests(self, activity=None):
         ret = list(self._all_requests)
@@ -111,6 +125,11 @@ class MemoryRequestsStorage(RequestStorage):
         assert request_to_remove.person_id == person_id, \
             f"The request of the given ID can't be removed by {person_id}"
         self._remove_request_by_id(request_id)
+        according_result_id = self.get_result(request_to_remove.resolved_by).id
+
+        concerned_requests = self._requests_by_result_id[according_result_id]
+        self._update_result_status(according_result_id, concerned_requests)
+        self._update_result_deadline(according_result_id)
 
     def _remove_request_by_id(self, request_id):
         request = self._requests_by_id[request_id]
@@ -128,21 +147,33 @@ class MemoryRequestsStorage(RequestStorage):
     def wipe_database(self):
         pass
 
+    def _find_fitting_result_id(self, results):
+        good_id = None
+        for result in results:
+            if result.status == requests.Status.FRESH:
+                good_id = result.id
+                break
+        if good_id is None:
+            for result in results:
+                if result.status == requests.Status.PENDING:
+                    good_id = result.id
+                    break
+        assert good_id is not None
+        return good_id
+
     def resolve_requests(self, requests_ids):
         all_requests = [self._requests_by_id[id] for id in requests_ids]
         assert len(all_requests) > 1
 
-        resolved_by = None
-        for request in all_requests:
-            if request.resolved_by is not None:
-                resolved_by = request.resolved_by
-
-        if resolved_by is None:
-            resolved_by = self._create_result()
+        existing_results = [self.get_result(req.resolved_by) for req in all_requests]
+        resolved_by = self._find_fitting_result_id(existing_results)
         for request in all_requests:
             self._remove_request_by_id(request.id)
             request.resolved_by = resolved_by
             self.store_request(request)
+
+        concerned_requests = self._requests_by_result_id[resolved_by]
+        self._update_result_status(resolved_by, concerned_requests)
         self._update_result_deadline(resolved_by)
         return resolved_by
 
@@ -151,6 +182,8 @@ class MemoryRequestsStorage(RequestStorage):
 
     def _update_result_deadline(self, result_id):
         result = self.get_result(result_id)
+        if result.status == requests.Status.INVALID:
+            return
         requests_deadlines = [req.deadline for req
                               in self._requests_by_result_id[result_id]]
         result.deadline = min(requests_deadlines)

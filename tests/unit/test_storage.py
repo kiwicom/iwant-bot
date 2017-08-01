@@ -14,7 +14,7 @@ def make_request_stacker(store):
     def stack_request(uid, person, activity, args=(NOW, NOW + 5 * TIME_1MIN, 60 * 5)):
         request = requests.IWantRequest(person, activity, * args)
         request.id = uid
-        store.store_request(request)
+        request = store.store_request(request)
         return request
     return stack_request
 
@@ -34,6 +34,8 @@ def storage_saves_and_restores(store):
     with pytest.raises(ValueError) as err:
         store.store_request(42)
     assert "int" in str(err)
+    corresponding_result = store.get_result(recovered_request.resolved_by)
+    assert corresponding_result.status == requests.Status.PENDING
 
 
 def test_storage_sqlite_saves_and_restores():
@@ -103,7 +105,7 @@ def storage_resolves_and_fetches(store):
     assert coffee_result_id is not None
     assert coffee_result_id == resolved_requests[1].resolved_by
 
-    store.resolve_requests(["one", "two", "three"])
+    store.resolve_requests(["three", "one", "two"])
     resolved_requests = store.get_activity_requests("coffee")
     for req in resolved_requests:
         assert req.resolved_by == coffee_result_id
@@ -133,7 +135,7 @@ def storage_removes(store):
     stack = make_request_stacker(store)
 
     stack("one", "john", "coffee")
-    stack("foo", "john", "coffee")
+    to_be_removed = stack("foo", "john", "coffee")
 
     with pytest.raises(AssertionError):
         store.remove_activity_request("bar", "jack")
@@ -141,6 +143,8 @@ def storage_removes(store):
         store.remove_activity_request("foo", "jack")
     store.remove_activity_request("foo", "john")
     assert len(store.get_activity_requests()) == 1
+    removed_result_id = to_be_removed.resolved_by
+    assert store.get_result(removed_result_id).status == requests.Status.INVALID
 
 
 def test_memory_storage_understands_time():

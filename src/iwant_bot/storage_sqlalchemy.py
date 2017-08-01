@@ -3,7 +3,7 @@ from contextlib import contextmanager
 import datetime
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, String, ForeignKey, Float, Integer, DateTime
+from sqlalchemy import Column, String, ForeignKey, Float, Integer, DateTime, Enum
 
 from . import requests
 from . import storage
@@ -55,7 +55,7 @@ class IWantRequest(Request):
     activity_duration = Column(Float, nullable=False)
     activity = Column(String, nullable=False)
 
-    resolved_by = Column(Integer, ForeignKey("results.id"), nullable=True)
+    resolved_by = Column(Integer, ForeignKey("results.id"))
 
     def toIWantRequest(self, person_id=None):
         result = requests.IWantRequest(
@@ -71,10 +71,12 @@ class Result(RequestsBase):
 
     id = Column(Integer, primary_key=True, unique=True, autoincrement=True)
     deadline = Column(DateTime)
+    status = Column(Enum(requests.Status))
 
     def toResult(self, requests_ids):
         result = requests.Result(
             self.id, requests_ids, self.deadline)
+        result.status = self.status
         return result
     # notification_status
 
@@ -85,16 +87,20 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
 
     def store_request(self, request):
         if isinstance(request, requests.IWantRequest):
-            self._store_activity_request(request)
+            return self._store_activity_request(request)
         else:
             raise ValueError(f"Can't store requests of type {type(request)}.")
 
     def _store_activity_request(self, request):
         with self.session_scope() as session:
+            new_result_id = self._create_result()
             request_to_add = IWantRequest(
-                id=request.id, person_id=request.person_id, deadline=request.deadline, activity=request.activity,
-                activity_start=request.activity_start, activity_duration=request.activity_duration)
+                id=request.id, person_id=request.person_id, deadline=request.deadline,
+                activity=request.activity, activity_start=request.activity_start,
+                activity_duration=request.activity_duration, resolved_by=new_result_id)
             session.add(request_to_add)
+        request.resolved_by = new_result_id
+        return request
 
     def get_activity_requests(self, activity=None):
         result = []
@@ -197,7 +203,7 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
         # The context manager doesn't work for some reason
         from sqlalchemy.orm import sessionmaker
         session = sessionmaker(bind=self.engine)()
-        result = Result()
+        result = Result(status=requests.Status.PENDING)
         session.add(result)
         session.commit()
         result_id = result.id

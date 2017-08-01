@@ -4,7 +4,7 @@ import datetime
 
 
 @enum.unique
-class Status(enum.Enum):
+class Status(enum.IntEnum):
     PENDING = 0
     INVALID = enum.auto()
     FRESH = enum.auto()
@@ -92,6 +92,7 @@ class Result(object):
         self.id = uid
         self.requests_ids = requests_ids
         self.deadline = deadline
+        self.status = Status.PENDING
 
     def __hash__(self):
         return hash((super().__hash__(),
