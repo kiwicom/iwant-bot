@@ -7,31 +7,43 @@ from iwant_bot.pool import RequestsPool
 
 NOW = datetime.datetime.today()
 DELAY_10S = datetime.timedelta(seconds=10)
+START_TIME = NOW + 60 * DELAY_10S
+
+
+def make_request_stacker(store):
+
+    def stack_request(person, activity, deadline):
+        request = requests.IWantRequest(person, activity, deadline, START_TIME, 0)
+        request.id = "generic ID"
+        request = store.store_request(request)
+        return request
+    return stack_request
 
 
 def make_filled_request_pool():
     storage = MemoryRequestsStorage()
-    storage.store_request(requests.IWantRequest("john", "coffee", NOW + 5 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("jane", "coffee", NOW + 5 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("oliver", "coffee", NOW + 5 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("peter", "coffee", NOW + 7 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("olivia", "picnic", NOW + 5 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("martin", "picnic", NOW + 7 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("christopher", "picnic", NOW + 10 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("jerry", "coffee", NOW, 0, 0))
-    storage.store_request(requests.IWantRequest("tyler", "coffee", NOW + 7 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("carolina", "coffee", NOW + 7 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("emilia", "coffee", NOW + 7 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("josh", "coffee", NOW + 7 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("alex", "coffee", NOW + 7 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("bryan", "coffee", NOW + 7 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("kate", "coffee", NOW + 7 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("morgan", "coffee", NOW + 7 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("celine", "coffee", NOW + 7 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("trevor", "coffee", NOW + 7 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("michael", "coffee", NOW + 7 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("franklin", "coffee", NOW + 7 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("andrew", "picnic", NOW + 5 * DELAY_10S, 0, 0))
+    stacker = make_request_stacker(storage)
+    stacker("john", "coffee", NOW + 5 * DELAY_10S)
+    stacker("jane", "coffee", NOW + 5 * DELAY_10S)
+    stacker("oliver", "coffee", NOW + 5 * DELAY_10S)
+    stacker("peter", "coffee", NOW + 7 * DELAY_10S)
+    stacker("olivia", "picnic", NOW + 5 * DELAY_10S)
+    stacker("martin", "picnic", NOW + 7 * DELAY_10S)
+    stacker("christopher", "picnic", NOW + 10 * DELAY_10S)
+    stacker("jerry", "coffee", NOW)
+    stacker("tyler", "coffee", NOW + 7 * DELAY_10S)
+    stacker("carolina", "coffee", NOW + 7 * DELAY_10S)
+    stacker("emilia", "coffee", NOW + 7 * DELAY_10S)
+    stacker("josh", "coffee", NOW + 7 * DELAY_10S)
+    stacker("alex", "coffee", NOW + 7 * DELAY_10S)
+    stacker("bryan", "coffee", NOW + 7 * DELAY_10S)
+    stacker("kate", "coffee", NOW + 7 * DELAY_10S)
+    stacker("morgan", "coffee", NOW + 7 * DELAY_10S)
+    stacker("celine", "coffee", NOW + 7 * DELAY_10S)
+    stacker("trevor", "coffee", NOW + 7 * DELAY_10S)
+    stacker("michael", "coffee", NOW + 7 * DELAY_10S)
+    stacker("franklin", "coffee", NOW + 7 * DELAY_10S)
+    stacker("andrew", "picnic", NOW + 5 * DELAY_10S)
     pool = RequestsPool(storage)
     pool.update_requests_from_storage()
     return pool
@@ -81,7 +93,10 @@ def test_number_of_activities():
     pool = make_filled_request_pool()
     storage = pool._requests_storage
     assert len(pool.activity_list) == 2
-    storage.store_request(requests.IWantRequest("jack", "running", NOW + 45 * DELAY_10S, 0, 0))
+
+    stacker = make_request_stacker(storage)
+    stacker("jack", "running", NOW + 45 * DELAY_10S)
+
     pool.update_requests_from_storage()
     assert len(pool.activity_list) == 3
 
@@ -89,8 +104,11 @@ def test_number_of_activities():
 def test_pool_ignores_duplicates():
     pool = make_filled_request_pool()
     storage = pool._requests_storage
-    storage.store_request(requests.IWantRequest("john", "coffee", NOW + 5 * DELAY_10S, 0, 0))
-    storage.store_request(requests.IWantRequest("james", "coffee", NOW + 5 * DELAY_10S, 0, 0))
+
+    stacker = make_request_stacker(storage)
+    stacker("john", "coffee", NOW + 5 * DELAY_10S)
+    stacker("james", "coffee", NOW + 5 * DELAY_10S)
+
     pool.update_requests_from_storage()
     active_requests = pool.current_activities_requests
     assert len(active_requests) == 21

@@ -43,6 +43,8 @@ class IWantRequest(Request):
 
     def __eq__(self, rhs):
         result = True
+        # If two requests differ just by having different resolved_by
+        # result ID, they are still the same requests.
         if (
                 False
                 or self.id != rhs.id
@@ -51,7 +53,6 @@ class IWantRequest(Request):
                 or self.deadline != rhs.deadline
                 or self.activity_start != rhs.activity_start
                 or self.activity_duration != rhs.activity_duration
-                or self.resolved_by != rhs.resolved_by
                 ):
             result = False
         return result
