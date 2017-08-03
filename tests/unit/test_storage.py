@@ -264,26 +264,3 @@ def storage_filters_activities(store):
 
     recovered_all_requests = store.get_activity_requests()
     assert len(recovered_all_requests) == 3
-
-
-def test_task_queue():
-    store = storage.MemoryTaskQueue()
-    store.store_task("coffee-added")
-    store.store_task("coffee-cancelled")
-    task = store.retreive_task()
-    assert task == "coffee-cancelled"
-    store.store_task("covfefe-tweeted")
-    assert store.retreive_task() == ("covfefe-tweeted")
-
-
-def test_results_storage():
-    store = storage.MemoryResultsStorage()
-    late_result = requests.Result(0, ["3"], 2)
-    store.store_result(late_result)
-    early_result = requests.Result(1, ["1", "2"], 1)
-    store.store_result(early_result)
-    returned_result = store.get_results_concerning_request("1")
-    assert early_result == returned_result
-    assert store.get_results_past(1)[0] == late_result
-    assert store.get_results_past(0)[0] == early_result
-    assert store.get_results_past(0)[1] == late_result
