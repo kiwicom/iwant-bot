@@ -12,6 +12,7 @@ Welcome to iwant_bot's documentation!
 
    toplevel.rst
 
+   modules.rst
 
 
 Indices and tables
