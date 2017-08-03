@@ -114,7 +114,7 @@ class MemoryRequestsStorage(RequestStorage):
                 self._requests_by_result_id[request.resolved_by].add(request)
                 self._results_by_id[request.resolved_by].requests_ids.add(request.id)
             else:
-                resolved_by = self._create_result()
+                resolved_by = self._create_result(request)
                 request.resolved_by = resolved_by
         else:
             raise ValueError(f"Can't store requests of type {type(request)}.")
@@ -151,10 +151,10 @@ class MemoryRequestsStorage(RequestStorage):
         if request.resolved_by is not None:
             self._requests_by_result_id[request.resolved_by].discard(request)
 
-    def _create_result(self):
+    def _create_result(self, request):
         self._result_counter += 1
         self._results_by_id[self._result_counter] = requests.Result(
-            self._result_counter, set(), None)
+            self._result_counter, set(), request.deadline)
         return self._result_counter
 
     def wipe_database(self):

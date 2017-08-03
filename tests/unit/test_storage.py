@@ -151,15 +151,28 @@ def storage_removes_resolved_requests(store):
     store.wipe_database()
     stack = make_request_stacker(store)
 
-    first_result_id = stack("one", "john", "coffee").resolved_by
-    second_result_id = stack("foo", "john", "coffee").resolved_by
+    first_result_id = stack("one", "john", "coffee",
+                            (NOW, NOW + 5 * TIME_1MIN, 60 * 5)).resolved_by
+    second_result_id = stack("foo", "john", "coffee",
+                             (NOW + TIME_1MIN, NOW + 10 * TIME_1MIN, 60 * 5)).resolved_by
     result_ids = {first_result_id, second_result_id}
     assert len(result_ids) == 2
 
     result_id = store.resolve_requests(["one", "foo"])
     assert result_id in result_ids
-    purged_result_id = result_ids - {result_id, }
-    assert store.get_result(purged_result_id.pop()).status == requests.Status.INVALID
+    purged_result_id = (result_ids - {result_id, }).pop()
+
+    result = store.get_result(purged_result_id)
+    assert result.status == requests.Status.INVALID
+
+    result = store.get_result(result_id)
+    assert result.status == requests.Status.FRESH
+    assert result.deadline == NOW
+    store.remove_activity_request("one", "john")
+
+    result = store.get_result(result_id)
+    assert result.status == requests.Status.PENDING
+    assert result.deadline == NOW + TIME_1MIN
 
 
 def test_memory_storage_removes_resolved_requests():

@@ -93,7 +93,7 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
 
     def _store_activity_request(self, request):
         with self.session_scope() as session:
-            new_result_id = self._create_result()
+            new_result_id = self._create_result(request)
             request_to_add = IWantRequest(
                 id=request.id, person_id=request.person_id, deadline=request.deadline,
                 activity=request.activity, activity_start=request.activity_start,
@@ -129,6 +129,7 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
 
         concerned_result_id = request_to_delete.resolved_by
         self.__update_result_status(concerned_result_id)
+        self._update_result_deadline(concerned_result_id)
 
     def __update_result_status(self, result_id):
         with self.session_scope() as session:
@@ -219,11 +220,11 @@ class SqlAlchemyRequestStorage(SQLAlchemyStorage, storage.RequestStorage):
                       for record in query_results.all()]
         return result
 
-    def _create_result(self):
+    def _create_result(self, request):
         # The context manager doesn't work for some reason
         from sqlalchemy.orm import sessionmaker
         session = sessionmaker(bind=self.engine)()
-        result = Result(status=requests.Status.PENDING)
+        result = Result(status=requests.Status.PENDING, deadline=request.deadline)
         session.add(result)
         session.commit()
         result_id = result.id
