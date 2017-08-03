@@ -1,6 +1,5 @@
 import abc
 import collections
-import queue
 import datetime
 
 from iwant_bot import requests
