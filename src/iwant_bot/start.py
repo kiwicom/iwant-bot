@@ -4,8 +4,10 @@ from os import getenv
 import re
 import time
 import json
-from iwant_bot.slack_communicator import SlackCommunicator
 from iwant_bot.iwant_process import IwantRequest
+import iwant_bot.notifier
+import iwant_bot.pipeline
+import bot_worker.celery
 
 
 VERIFICATION = getenv('VERIFICATION')
@@ -182,26 +184,38 @@ app.router.add_post(r'/{post:[\w/]*}', handle_other_posts)
 
 loop = asyncio.get_event_loop()
 
-# Created channel iwant_group10 - id: G65FE8M6K.
-# (1..9 were created and archived, but still cannot be recreate and I cannot delete them.)
-# So, we should not create to many channels?
-
-# test = SlackCommunicator(SUPER_TOKEN, 'U51RKKATS', 'Create channel')
-# loop.run_until_complete(asyncio.gather(test.create_private_channel('iwant_group11'),
-#                                        test.invite_people_in_private_channel())
-#                         )
-
+# from iwant_bot.slack_communicator import SlackCommunicator
 
 # sent_message_to_each can send message even to channels and users
-test1 = SlackCommunicator(BOT_TOKEN, 'U52FUHD98', 'Initial message.')
-loop.run_until_complete(test1.send_message_to_each())
+# test1 = SlackCommunicator(BOT_TOKEN, 'U52FUHD98', 'Initial message.')
+# loop.run_until_complete(test1.send_message_to_each())
 
-
-# sent message to multiparty group of 2 to 7 people (+ 1 iwant-bot). Need BOT_TOKEN.
-# So, this is preferable variant...
-
+# sent message to multiparty group of 2 to 7 people (+ 1 iwant-bot).
 # test2 = SlackCommunicator(BOT_TOKEN, ['U51RKKATS', 'U52FUHD98', 'U52FU3ZTL'], 'Sorry spam :).')
 # loop.run_until_complete(test2.send_message_to_multiparty())
+
+storage = iwant_bot.pipeline.choose_correct_store()
+
+
+# async def loop_checker(store, delay):
+#     """This is periodically called loop checker, which sends notification about unfilled requests
+#     (requests close to the deadline ~ 30 seconds)."""
+#     await asyncio.sleep(delay)
+#     print('INFO: Loop checker...')
+#     await iwant_bot.notifier.notify_not_matched_request(store, _check_storage_interval, BOT_TOKEN)
+#     await loop_checker(store, _check_storage_interval)
+#
+# loop.create_task(loop_checker(storage, delay=_check_storage_interval))
+
+
+@bot_worker.celery.worker.task()
+def storage_checker(storage):
+    """This should be same as function loop_checker, but delegated to Celery workers."""
+    print('INFO: Celery checker...')
+    ids = iwant_bot.notifier.notify_not_matched_request(
+        storage, bot_worker.celery._check_storage_interval, BOT_TOKEN)
+    return f'Outdated requests: {", ".join(ids)}'
+
 
 if __name__ == '__main__':
     web.run_app(app)
