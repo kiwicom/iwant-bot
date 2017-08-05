@@ -14,7 +14,7 @@ def make_request_stacker(store):
     def stack_request(uid, person, activity, args=(NOW, NOW + 5 * TIME_1MIN, 60 * 5)):
         request = requests.IWantRequest(person, activity, * args)
         request.id = uid
-        store.store_request(request)
+        request = store.store_request(request)
         return request
     return stack_request
 
@@ -34,6 +34,8 @@ def storage_saves_and_restores(store):
     with pytest.raises(ValueError) as err:
         store.store_request(42)
     assert "int" in str(err)
+    corresponding_result = store.get_result(recovered_request.resolved_by)
+    assert corresponding_result.status == requests.Status.PENDING
 
 
 def test_storage_sqlite_saves_and_restores():
@@ -103,7 +105,7 @@ def storage_resolves_and_fetches(store):
     assert coffee_result_id is not None
     assert coffee_result_id == resolved_requests[1].resolved_by
 
-    store.resolve_requests(["one", "two", "three"])
+    store.resolve_requests(["three", "one", "two"])
     resolved_requests = store.get_activity_requests("coffee")
     for req in resolved_requests:
         assert req.resolved_by == coffee_result_id
@@ -133,7 +135,7 @@ def storage_removes(store):
     stack = make_request_stacker(store)
 
     stack("one", "john", "coffee")
-    stack("foo", "john", "coffee")
+    to_be_removed = stack("foo", "john", "coffee")
 
     with pytest.raises(AssertionError):
         store.remove_activity_request("bar", "jack")
@@ -141,6 +143,52 @@ def storage_removes(store):
         store.remove_activity_request("foo", "jack")
     store.remove_activity_request("foo", "john")
     assert len(store.get_activity_requests()) == 1
+    removed_result_id = to_be_removed.resolved_by
+    assert store.get_result(removed_result_id).status == requests.Status.INVALID
+
+
+def storage_removes_resolved_requests(store):
+    store.wipe_database()
+    stack = make_request_stacker(store)
+
+    first_result_id = stack("one", "john", "coffee",
+                            (NOW, NOW + 5 * TIME_1MIN, 60 * 5)).resolved_by
+    second_result_id = stack("foo", "john", "coffee",
+                             (NOW + TIME_1MIN, NOW + 10 * TIME_1MIN, 60 * 5)).resolved_by
+    result_ids = {first_result_id, second_result_id}
+    assert len(result_ids) == 2
+
+    result_id = store.resolve_requests(["one", "foo"])
+    assert result_id in result_ids
+    purged_result_id = (result_ids - {result_id, }).pop()
+
+    result = store.get_result(purged_result_id)
+    assert result.status == requests.Status.INVALID
+
+    result = store.get_result(result_id)
+    assert result.status == requests.Status.FRESH
+    assert result.deadline == NOW
+    store.remove_activity_request("one", "john")
+
+    result = store.get_result(result_id)
+    assert result.status == requests.Status.PENDING
+    assert result.deadline == NOW + TIME_1MIN
+
+
+def test_memory_storage_removes_resolved_requests():
+    store = storage.MemoryRequestsStorage()
+    storage_removes_resolved_requests(store)
+
+
+def test_sqlite_storage_removes_resolved_requests():
+    store = storage_sqlalchemy.SqlAlchemyRequestStorage("sqlite:///here.sqlite")
+    storage_removes_resolved_requests(store)
+
+
+@pytest.mark.skipif("POSTGRES_USER" not in os.environ,
+                    reason="Postgres container connection is not configured correctly")
+def test_postgres_storage_removes_resolved_requests(postgres_store):
+    storage_removes_resolved_requests(postgres_store)
 
 
 def test_memory_storage_understands_time():
@@ -158,22 +206,23 @@ def storage_understands_time(store):
     stack = make_request_stacker(store)
 
     early_deadline = NOW + TIME_1MIN * 0.8
+    mid_deadline = NOW + TIME_1MIN
     stack("one", "john", "coffee", (early_deadline, NOW, 0))
-    stack("two", "janine", "tea", (NOW + TIME_1MIN, NOW, 0))
+    stack("two", "janine", "tea", (mid_deadline, NOW, 0))
     stack("three", "paul", "wine", (NOW + TIME_1MIN * 1.2, NOW, 0))
 
-    expiring_requests = store.get_requests_by_deadline_proximity(NOW, 58)
+    expiring_requests = store.get_requests_by_deadline_proximity(NOW + 2 * TIME_1MIN, 58)
     assert len(expiring_requests) == 1
-    expiring_requests.pop().id == "one"
+    expiring_requests.pop().id == "three"
 
-    expiring_requests = store.get_requests_by_deadline_proximity(NOW, 65)
+    expiring_requests = store.get_requests_by_deadline_proximity(NOW + 2 * TIME_1MIN, 62)
     assert len(expiring_requests) == 2
     for req in expiring_requests:
-        assert req.id in ("one", "two")
+        assert req.id in ("three", "two")
 
-    result_id = store.resolve_requests(["one", "two"])
+    result_id = store.resolve_requests(["three", "two"])
     result = store.get_result(result_id)
-    assert result.deadline == early_deadline
+    assert result.deadline == mid_deadline
 
 
 def test_memory_storage_filters_activities():
@@ -215,26 +264,3 @@ def storage_filters_activities(store):
 
     recovered_all_requests = store.get_activity_requests()
     assert len(recovered_all_requests) == 3
-
-
-def test_task_queue():
-    store = storage.MemoryTaskQueue()
-    store.store_task("coffee-added")
-    store.store_task("coffee-cancelled")
-    task = store.retreive_task()
-    assert task == "coffee-cancelled"
-    store.store_task("covfefe-tweeted")
-    assert store.retreive_task() == ("covfefe-tweeted")
-
-
-def test_results_storage():
-    store = storage.MemoryResultsStorage()
-    late_result = requests.Result(0, ["3"], 2)
-    store.store_result(late_result)
-    early_result = requests.Result(1, ["1", "2"], 1)
-    store.store_result(early_result)
-    returned_result = store.get_results_concerning_request("1")
-    assert early_result == returned_result
-    assert store.get_results_past(1)[0] == late_result
-    assert store.get_results_past(0)[0] == early_result
-    assert store.get_results_past(0)[1] == late_result

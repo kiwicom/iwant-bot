@@ -1,6 +1,5 @@
 import abc
 import collections
-import queue
 import datetime
 
 from iwant_bot import requests
@@ -51,7 +50,11 @@ class RequestStorage(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_requests_by_deadline_proximity(self, deadline, time_proximity):
+    def get_requests_by_deadline_proximity(self, deadline, time_buffer_in_seconds):
+        pass
+
+    @abc.abstractmethod
+    def get_results_by_deadline_proximity(self, deadline, time_proximity):
         pass
 
     @abc.abstractmethod
@@ -65,6 +68,29 @@ class RequestStorage(abc.ABC):
     @abc.abstractmethod
     def _update_result_deadline(self, result_id):
         pass
+
+    def _update_result_status(self, result, concerned_requests):
+        if len(concerned_requests) == 1:
+            result.status = requests.Status.PENDING
+        elif len(concerned_requests) > 1:
+            result.status = requests.Status.FRESH
+        elif len(concerned_requests) == 0:
+            result.status = requests.Status.INVALID
+        return result
+
+    def _find_fitting_result_id(self, results):
+        good_id = None
+        for result in results:
+            if result.status == requests.Status.FRESH:
+                good_id = result.id
+                break
+        if good_id is None:
+            for result in results:
+                if result.status == requests.Status.PENDING:
+                    good_id = result.id
+                    break
+        assert good_id is not None
+        return good_id
 
 
 # TODO: Remove -> Invalidate
@@ -86,8 +112,12 @@ class MemoryRequestsStorage(RequestStorage):
             if request.resolved_by is not None:
                 self._requests_by_result_id[request.resolved_by].add(request)
                 self._results_by_id[request.resolved_by].requests_ids.add(request.id)
+            else:
+                resolved_by = self._create_result(request)
+                request.resolved_by = resolved_by
         else:
             raise ValueError(f"Can't store requests of type {type(request)}.")
+        return request
 
     def get_activity_requests(self, activity=None):
         ret = list(self._all_requests)
@@ -107,6 +137,11 @@ class MemoryRequestsStorage(RequestStorage):
         assert request_to_remove.person_id == person_id, \
             f"The request of the given ID can't be removed by {person_id}"
         self._remove_request_by_id(request_id)
+        according_result_id = self.get_result(request_to_remove.resolved_by).id
+
+        concerned_requests = self._requests_by_result_id[according_result_id]
+        self._update_result_status(self._results_by_id[according_result_id], concerned_requests)
+        self._update_result_deadline(according_result_id)
 
     def _remove_request_by_id(self, request_id):
         request = self._requests_by_id[request_id]
@@ -115,10 +150,10 @@ class MemoryRequestsStorage(RequestStorage):
         if request.resolved_by is not None:
             self._requests_by_result_id[request.resolved_by].discard(request)
 
-    def _create_result(self):
+    def _create_result(self, request):
         self._result_counter += 1
         self._results_by_id[self._result_counter] = requests.Result(
-            self._result_counter, set(), None)
+            self._result_counter, set(), request.deadline)
         return self._result_counter
 
     def wipe_database(self):
@@ -128,18 +163,18 @@ class MemoryRequestsStorage(RequestStorage):
         all_requests = [self._requests_by_id[id] for id in requests_ids]
         assert len(all_requests) > 1
 
-        resolved_by = None
-        for request in all_requests:
-            if request.resolved_by is not None:
-                resolved_by = request.resolved_by
-
-        if resolved_by is None:
-            resolved_by = self._create_result()
+        existing_results = [self.get_result(req.resolved_by) for req in all_requests]
+        resolved_by = self._find_fitting_result_id(existing_results)
         for request in all_requests:
             self._remove_request_by_id(request.id)
             request.resolved_by = resolved_by
             self.store_request(request)
-        self._update_result_deadline(resolved_by)
+
+        for result in existing_results:
+            result_id = result.id
+            concerned_requests = self._requests_by_result_id[result_id]
+            self._update_result_status(self._results_by_id[result_id], concerned_requests)
+            self._update_result_deadline(result_id)
         return resolved_by
 
     def get_requests_of_result(self, result_id):
@@ -147,111 +182,33 @@ class MemoryRequestsStorage(RequestStorage):
 
     def _update_result_deadline(self, result_id):
         result = self.get_result(result_id)
+        if result.status == requests.Status.INVALID:
+            return
         requests_deadlines = [req.deadline for req
                               in self._requests_by_result_id[result_id]]
         result.deadline = min(requests_deadlines)
 
-    def get_requests_by_deadline_proximity(self, deadline, time_proximity):
-        time_start = deadline
-        time_end = time_start + datetime.timedelta(seconds=time_proximity)
+    def _get_item_by_deadline_proximity(self, container, deadline, time_proximity):
+        time_end = deadline
+        time_start = time_end - datetime.timedelta(seconds=time_proximity)
         result = set()
-        for req in self._all_requests:
+        for req in container:
             if time_start < req.deadline < time_end:
                 result.add(req)
         return result
 
+    def get_requests_by_deadline_proximity(self, deadline, time_buffer_in_seconds):
+        return self._get_item_by_deadline_proximity(self._all_requests, deadline, time_buffer_in_seconds)
+
+    def get_results_by_deadline_proximity(self, deadline, time_proximity):
+        results = self._get_item_by_deadline_proximity(
+            self._results_by_id.values(), deadline, time_proximity)
+        results = filter(
+            lambda res: res.status in (requests.Status.PENDING, requests.Status.FRESH),
+            results
+        )
+        return results
+
     def get_result(self, result_id):
-        return self._results_by_id[result_id]
-
-
-class TaskQueue(abc.ABC):
-    @abc.abstractmethod
-    def __init__(self):
-        pass
-
-    @abc.abstractmethod
-    def store_task(self, task_id, task_content):
-        """
-        Stores a task so it can be retreived.
-        """
-        pass
-
-    @abc.abstractmethod
-    def retreive_task(self):
-        """
-        """
-        pass
-
-    @abc.abstractmethod
-    def task_is_solved(self, task_id):
-        """
-        """
-        pass
-
-
-class MemoryTaskQueue(TaskQueue):
-    def __init__(self):
-        self._tasks = queue.LifoQueue()
-
-    def store_task(self, task):
-        self._tasks.put(task)
-
-    def task_is_solved(self, task_id):
-        pass
-
-    def retreive_task(self):
-        return self._tasks.get()
-
-
-class ResultsStorage(abc.ABC):
-    @abc.abstractmethod
-    def __init__(self):
-        pass
-
-    @abc.abstractmethod
-    def store_result(self, result):
-        """
-        Stores a result so it can be retreived.
-        """
-        pass
-
-    @abc.abstractmethod
-    def get_results_concerning_request(self, request_id):
-        """
-        """
-        pass
-
-    @abc.abstractmethod
-    def get_results_past(self, time):
-        pass
-
-
-class MemoryResultsStorage(ResultsStorage):
-    def __init__(self):
-        self._cathegory_storage = collections.defaultdict(list)
-        self._all_results = set()
-
-    def store_result(self, result):
-        """
-        Stores a result so it can be retreived.
-        """
-        for request_id in result.requests_ids:
-            self._cathegory_storage[request_id] = result
-        self._all_results.add(result)
-
-    def get_results_concerning_request(self, request_id):
-        """
-        """
-        return self._cathegory_storage[request_id]
-
-    def get_results_past(self, time):
-        def request_is_effective(req): return req.deadline > time
-        results_past_time = filter(request_is_effective, list(self._all_results))
-        results_past_time = sorted(results_past_time, key=lambda req: req.deadline)
-        return results_past_time
-
-    def _pop_result(self, result):
-        for request_id in result.requests_ids:
-            self._cathegory_storage.pop(request_id)
-        self._all_results.discard(result)
+        result = self._results_by_id[result_id]
         return result

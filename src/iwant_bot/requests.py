@@ -1,14 +1,19 @@
-import time
 import enum
 import datetime
 
 
 @enum.unique
-class Status(enum.Enum):
+class Status(enum.IntEnum):
     PENDING = 0
-    INVALID = 1
-    DONE = 2
+    INVALID = enum.auto()
+    FRESH = enum.auto()
+    DONE = enum.auto()
 
+
+# TODO:
+# - filter results by status
+# - create a result for every submitted request
+# - handle results assignment for requests that have pending results - delete pending results that become obsolete
 
 class Request(object):
     def __init__(self, person_id, request_id=None):
@@ -38,6 +43,8 @@ class IWantRequest(Request):
 
     def __eq__(self, rhs):
         result = True
+        # If two requests differ just by having different resolved_by
+        # result ID, they are still the same requests.
         if (
                 False
                 or self.id != rhs.id
@@ -46,17 +53,16 @@ class IWantRequest(Request):
                 or self.deadline != rhs.deadline
                 or self.activity_start != rhs.activity_start
                 or self.activity_duration != rhs.activity_duration
-                or self.resolved_by != rhs.resolved_by
                 ):
             result = False
         return result
 
     @property
     def activity_end(self):
-        return self.activity_start + self.activity_duration
+        return self.activity_start + datetime.timedelta(seconds=self.activity_duration)
 
     def is_active_now(self):
-        return self.is_active_by(time.time())
+        return self.is_active_by(datetime.datetime.today())
 
     def is_active_by(self, by_the_time):
         return by_the_time < self.deadline
@@ -86,3 +92,20 @@ class Result(object):
         self.id = uid
         self.requests_ids = requests_ids
         self.deadline = deadline
+        self.status = Status.PENDING
+
+    def __hash__(self):
+        return hash((super().__hash__(),
+                     self.id, frozenset(self.requests_ids),
+                     self.deadline))
+
+    def __eq__(self, rhs):
+        result = True
+        if (
+                False
+                or self.id != rhs.id
+                or self.requests_ids != rhs.requests_ids
+                or self.deadline != rhs.deadline
+                ):
+            result = False
+        return result
