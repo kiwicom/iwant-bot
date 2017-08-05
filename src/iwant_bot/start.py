@@ -7,7 +7,7 @@ import json
 from iwant_bot.iwant_process import IwantRequest
 import iwant_bot.notifier
 import iwant_bot.pipeline
-from bot_worker.celery import worker
+import bot_worker.celery
 
 
 VERIFICATION = getenv('VERIFICATION')
@@ -36,7 +36,6 @@ _max_duration = 43200.0  # 12 hours is maximal duration of any request.
 # Expect expanded Slack format like <@U1234|user> <#C1234|general>.
 # Turn on 'Escape channels, users, and links sent to your app'.
 _slack_user_pattern = '<@([A-Z0-9]+)\|[a-z0-9][-_.a-z0-9]{1,20}>'
-_check_storage_interval = 30      # seconds
 
 
 class TokenError(Exception):
@@ -198,25 +197,24 @@ loop = asyncio.get_event_loop()
 storage = iwant_bot.pipeline.choose_correct_store()
 
 
-async def loop_checker(store, delay):
-    """This is periodically called loop checker, which sends notification about unfilled requests
-    (requests close to the deadline ~ 30 seconds)."""
-    await asyncio.sleep(delay)
-    print('INFO: Loop checker...')
-    await iwant_bot.notifier.notify_not_matched_request(store, _check_storage_interval, BOT_TOKEN)
-    await loop_checker(store, _check_storage_interval)
+# async def loop_checker(store, delay):
+#     """This is periodically called loop checker, which sends notification about unfilled requests
+#     (requests close to the deadline ~ 30 seconds)."""
+#     await asyncio.sleep(delay)
+#     print('INFO: Loop checker...')
+#     await iwant_bot.notifier.notify_not_matched_request(store, _check_storage_interval, BOT_TOKEN)
+#     await loop_checker(store, _check_storage_interval)
+#
+# loop.create_task(loop_checker(storage, delay=_check_storage_interval))
 
-loop.create_task(loop_checker(storage, delay=_check_storage_interval))
 
-
-@worker.task()
-def storage_checker():
+@bot_worker.celery.worker.task()
+def storage_checker(storage):
     """This should be same as function loop_checker, but delegated to Celery workers."""
-    # I have some problems with async def & await.
-
     print('INFO: Celery checker...')
-    # store = iwant_bot.pipeline.choose_correct_store()
-    # await iwant_bot.notifier.notify_not_matched_request(store)
+    ids = iwant_bot.notifier.notify_not_matched_request(
+        storage, bot_worker.celery._check_storage_interval, BOT_TOKEN)
+    return f'Outdated requests: {", ".join(ids)}'
 
 
 if __name__ == '__main__':

@@ -1,7 +1,9 @@
 from __future__ import absolute_import
 from celery import Celery
-# from iwant_bot.start import _check_storage_interval
+import iwant_bot.pipeline
 
+_check_storage_interval = 30.0      # seconds
+store = iwant_bot.pipeline.choose_correct_store()
 
 worker = Celery('iwant_bot_celery_worker',
                 broker='redis://redis:6379/0',
@@ -17,9 +19,9 @@ worker.conf.update(
 )
 
 worker.conf.beat_schedule = {
-    'check_every_30_seconds': {
-       'task': 'iwant_bot.start.storage_checker',
-       'schedule': 30.0
-       # 'schedule': _check_storage_interval,
+    f'check_every_{_check_storage_interval}_seconds': {
+        'task': 'iwant_bot.start.storage_checker',
+        'schedule': _check_storage_interval,
+        'args': (store, )
     }
 }
